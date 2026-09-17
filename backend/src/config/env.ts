@@ -12,7 +12,9 @@ if (!process.env.VERCEL) {
 export const ENV = {
   kmaApiKey: process.env.KMA_API_KEY ?? "",
   forestFireApiKey: process.env.FOREST_FIRE_API_KEY ?? "",
-  port: Number(process.env.BACKEND_PORT ?? 4000),
+  // Vercel이 서비스에 주입하는 표준 PORT를 최우선으로 쓰고, 로컬 개발에서는 BACKEND_PORT,
+  // 둘 다 없으면 4000으로 폴백한다.
+  port: Number(process.env.PORT ?? process.env.BACKEND_PORT ?? 4000),
   frontendOrigin: process.env.FRONTEND_ORIGIN ?? "http://localhost:5173",
 };
 
