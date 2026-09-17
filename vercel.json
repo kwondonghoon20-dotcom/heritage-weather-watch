@@ -1,0 +1,10 @@
+{
+  "buildCommand": "npm install --prefix frontend && npm run build --prefix frontend",
+  "installCommand": "npm install",
+  "outputDirectory": "frontend/dist",
+  "functions": {
+    "api/*.ts": {
+      "maxDuration": 10
+    }
+  }
+}

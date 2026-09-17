@@ -1,0 +1,591 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>국가유산 기상관측판 — 야외 유산 위험도 프로토타입</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Song+Myung&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#E8E4D8;
+    --surface:#F6F3EA;
+    --surface-raise:#FFFFFF;
+    --text:#242019;
+    --text-muted:#6E6A5D;
+    --line:rgba(36,32,25,0.16);
+    --accent:#1F5C57;
+    --accent-soft:rgba(31,92,87,0.12);
+    --accent-contrast:#F6F3EA;
+    --c-blue:#1D4E89;    --c-blue-tint:rgba(29,78,137,0.13);
+    --c-yellow:#A9791C;  --c-yellow-tint:rgba(169,121,28,0.16);
+    --c-orange:#BD5A26;  --c-orange-tint:rgba(189,90,38,0.16);
+    --c-red:#A8332A;     --c-red-tint:rgba(168,51,42,0.15);
+    --font-display:'Song Myung', serif;
+    --font-body:'IBM Plex Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#17181A; --surface:#1F2022; --surface-raise:#26282A;
+      --text:#ECE8DE; --text-muted:#9C978B; --line:rgba(236,232,222,0.16);
+      --accent:#4FB3A9; --accent-soft:rgba(79,179,169,0.16); --accent-contrast:#0F1110;
+      --c-blue:#6AA3F5; --c-blue-tint:rgba(106,163,245,0.18);
+      --c-yellow:#E5BB4C; --c-yellow-tint:rgba(229,187,76,0.18);
+      --c-orange:#E38A57; --c-orange-tint:rgba(227,138,87,0.18);
+      --c-red:#E4685A; --c-red-tint:rgba(228,104,90,0.18);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#17181A; --surface:#1F2022; --surface-raise:#26282A;
+    --text:#ECE8DE; --text-muted:#9C978B; --line:rgba(236,232,222,0.16);
+    --accent:#4FB3A9; --accent-soft:rgba(79,179,169,0.16); --accent-contrast:#0F1110;
+    --c-blue:#6AA3F5; --c-blue-tint:rgba(106,163,245,0.18);
+    --c-yellow:#E5BB4C; --c-yellow-tint:rgba(229,187,76,0.18);
+    --c-orange:#E38A57; --c-orange-tint:rgba(227,138,87,0.18);
+    --c-red:#E4685A; --c-red-tint:rgba(228,104,90,0.18);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg); color:var(--text); font-family:var(--font-body);
+    line-height:1.5; -webkit-font-smoothing:antialiased;
+  }
+  @media (prefers-reduced-motion: reduce){
+    *{transition:none !important; animation:none !important;}
+  }
+  a{color:inherit;}
+  button{font-family:inherit; cursor:pointer;}
+  select, input[type="range"]{font-family:inherit;}
+  :focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+
+  .wrap{max-width:1180px; margin:0 auto; padding:28px 20px 60px;}
+
+  /* ---------- Header ---------- */
+  .site-header{
+    display:flex; justify-content:space-between; align-items:flex-end; gap:16px;
+    flex-wrap:wrap; padding-bottom:22px; border-bottom:1px solid var(--line); margin-bottom:22px;
+  }
+  .brand{display:flex; gap:14px; align-items:center;}
+  .brand-mark{font-size:34px; line-height:1;}
+  .brand h1{
+    font-family:var(--font-display); font-weight:400; font-size:28px; margin:0 0 4px;
+    letter-spacing:0.01em;
+  }
+  .brand-sub{margin:0; color:var(--text-muted); font-size:14px;}
+  .header-meta{display:flex; flex-direction:column; align-items:flex-end; gap:8px;}
+  .badge-proto{
+    font-size:12px; padding:4px 10px; border-radius:999px; border:1px solid var(--line);
+    color:var(--text-muted); background:var(--surface);
+  }
+  .clock{font-size:13px; color:var(--text-muted); font-variant-numeric:tabular-nums;}
+
+  /* ---------- Scenario / control bar ---------- */
+  .control-bar{
+    background:var(--surface); border:1px solid var(--line); padding:18px 20px; margin-bottom:20px;
+  }
+  .control-bar h2, .panel-title{
+    font-size:13px; font-weight:600; margin:0 0 12px; color:var(--text-muted);
+  }
+  .scenario-row{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:18px;}
+  .scenario-btn{
+    background:transparent; border:1px solid var(--line); color:var(--text);
+    padding:7px 14px; font-size:13.5px; transition:background .15s ease, color .15s ease, border-color .15s ease;
+  }
+  .scenario-btn:hover{border-color:var(--accent);}
+  .scenario-btn[aria-pressed="true"]{
+    background:var(--accent); border-color:var(--accent); color:var(--accent-contrast); font-weight:600;
+  }
+  .sliders{display:grid; grid-template-columns:repeat(5, 1fr); gap:18px;}
+  @media (max-width:900px){ .sliders{grid-template-columns:repeat(2,1fr);} }
+  @media (max-width:520px){ .sliders{grid-template-columns:1fr;} }
+  .slider-field label{display:flex; justify-content:space-between; font-size:12.5px; color:var(--text-muted); margin-bottom:6px;}
+  .slider-field output{color:var(--text); font-weight:600;}
+  .slider-field input[type="range"]{width:100%; accent-color:var(--accent);}
+
+  /* ---------- Summary strip ---------- */
+  .summary-strip{display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px;}
+  @media (max-width:640px){ .summary-strip{grid-template-columns:repeat(2,1fr);} }
+  .stat{
+    background:var(--surface); border:1px solid var(--line); border-left:4px solid var(--stat-color, var(--accent));
+    padding:14px 16px;
+  }
+  .stat .n{font-size:26px; font-weight:700; font-variant-numeric:tabular-nums;}
+  .stat .lbl{font-size:12.5px; color:var(--text-muted); margin-top:2px;}
+  .legend-note{font-size:12px; color:var(--text-muted); margin:-10px 0 20px;}
+
+  /* ---------- Layout: list + detail ---------- */
+  .layout{display:grid; grid-template-columns:1fr 360px; gap:22px; align-items:start;}
+  @media (max-width:880px){ .layout{grid-template-columns:1fr;} }
+
+  .filter-row{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;}
+  .filter-row select{
+    background:var(--surface); border:1px solid var(--line); color:var(--text);
+    padding:7px 10px; font-size:13px;
+  }
+
+  .list-head{
+    display:flex; padding:6px 14px; font-size:11.5px; color:var(--text-muted);
+  }
+  .list-head span:first-child{flex:1;}
+  .list-head span:nth-child(2){width:120px;}
+  .list-head span:nth-child(3){width:72px; text-align:right;}
+
+  .site-list{list-style:none; margin:0; padding:0; border:1px solid var(--line); background:var(--surface);}
+  .site-list li + li{border-top:1px solid var(--line);}
+  .row{
+    display:flex; align-items:center; width:100%; gap:14px; text-align:left;
+    background:transparent; border:0; border-left:4px solid var(--row-color, transparent);
+    padding:12px 14px; color:var(--text); transition:background .15s ease;
+  }
+  .row:hover{background:var(--accent-soft);}
+  .row[aria-current="true"]{background:var(--accent-soft); border-left-color:var(--accent);}
+  .row-main{flex:1; min-width:0;}
+  .row-main .name{font-weight:600; font-size:14.5px;}
+  .row-main .meta{font-size:12px; color:var(--text-muted); margin-top:2px;}
+  .row-gauge{width:120px;}
+  .gauge-track{height:6px; background:var(--line); position:relative; overflow:hidden;}
+  .gauge-fill{height:100%; width:0%; background:var(--row-color, var(--accent)); transition:width .4s ease;}
+  .row-gauge .score{font-size:11px; color:var(--text-muted); margin-top:4px; font-variant-numeric:tabular-nums;}
+  .badge{
+    width:72px; text-align:center; font-size:12px; font-weight:600; padding:4px 0; border-radius:999px;
+    background:var(--badge-tint); color:var(--badge-color);
+  }
+
+  /* ---------- Detail panel ---------- */
+  .detail-panel{
+    background:var(--surface); border:1px solid var(--line); padding:20px; position:sticky; top:18px;
+  }
+  .detail-empty{color:var(--text-muted); font-size:13.5px;}
+  .detail-empty .mark{font-size:28px; display:block; margin-bottom:10px;}
+  .detail-name{font-family:var(--font-display); font-size:21px; margin:0 0 2px;}
+  .detail-meta{font-size:12.5px; color:var(--text-muted); margin-bottom:14px;}
+  .detail-badge{
+    display:inline-block; padding:6px 16px; border-radius:999px; font-weight:700; font-size:14px;
+    background:var(--badge-tint); color:var(--badge-color); margin-bottom:16px;
+  }
+  .factor{margin-bottom:10px;}
+  .factor-row{display:flex; justify-content:space-between; font-size:12.5px; margin-bottom:4px;}
+  .factor-row .fv{color:var(--text-muted); font-variant-numeric:tabular-nums;}
+  .factor-track{height:8px; background:var(--line); position:relative;}
+  .factor-fill{height:100%; transition:width .4s ease;}
+  .factor-track::after{
+    content:""; position:absolute; left:50%; top:-2px; bottom:-2px; width:1px; background:var(--line);
+  }
+  .advice-box{
+    margin-top:16px; padding:12px 14px; background:var(--bg); border:1px solid var(--line); font-size:13px;
+  }
+  .advice-box .h{font-weight:600; margin-bottom:4px; font-size:12.5px; color:var(--text-muted);}
+  .desc{font-size:12.5px; color:var(--text-muted); margin-top:14px; border-top:1px solid var(--line); padding-top:12px;}
+
+  /* ---------- Footer ---------- */
+  .site-footer{margin-top:30px; padding-top:18px; border-top:1px solid var(--line); font-size:12px; color:var(--text-muted);}
+  .site-footer p{margin:0 0 6px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="site-header">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">🏛</span>
+      <div>
+        <h1>국가유산 기상관측판</h1>
+        <p class="brand-sub">비를 맞고 바람을 맞는 유산들의 오늘</p>
+      </div>
+    </div>
+    <div class="header-meta">
+      <span class="badge-proto">프로토타입 · 예시 데이터로 시뮬레이션</span>
+      <span class="clock" id="clock"></span>
+    </div>
+  </header>
+
+  <section class="control-bar" aria-label="기상 시나리오 설정">
+    <h2>오늘의 기상 시나리오</h2>
+    <div class="scenario-row" id="scenarioRow" role="group" aria-label="시나리오 프리셋"></div>
+    <h2>세부 조정</h2>
+    <div class="sliders" id="sliders"></div>
+  </section>
+
+  <section class="summary-strip" id="summaryStrip" aria-label="경보 단계별 현황"></section>
+  <p class="legend-note">경보 4단계 — 관심(파랑) · 주의(노랑) · 경계(주황) · 심각(빨강). 국가 재난위기경보 체계의 표준 단계명을 참고했습니다.</p>
+
+  <div class="layout">
+    <div class="list-panel">
+      <div class="filter-row">
+        <select id="filterRegion" aria-label="지역 필터"></select>
+        <select id="filterMaterial" aria-label="재질 필터"></select>
+        <select id="sortKey" aria-label="정렬 기준">
+          <option value="risk">위험도 높은순</option>
+          <option value="name">이름순</option>
+          <option value="region">지역순</option>
+        </select>
+      </div>
+      <div class="list-head">
+        <span>유산명 · 지역 · 재질</span>
+        <span>위험도</span>
+        <span>단계</span>
+      </div>
+      <ul class="site-list" id="siteList"></ul>
+    </div>
+
+    <aside class="detail-panel" id="detailPanel">
+      <div class="detail-empty">
+        <span class="mark" aria-hidden="true">☂</span>
+        왼쪽 목록에서 유산을 선택하면<br/>세부 위험 요인과 권장 조치를 볼 수 있어요.
+      </div>
+    </aside>
+  </div>
+
+  <footer class="site-footer">
+    <p>이 화면은 개념 검증용 프로토타입입니다. 아래 16곳은 국가유산청이 지정한 야외 노출 국가유산 중 예시로 선별한 목록이며, 위험 점수는 재질별 취약도와 사용자가 지정한 가상 기상값을 곱해 계산한 단순 규칙 기반 지표로 실제 관측값이 아닙니다.</p>
+    <p>실제 서비스로 확장한다면 국가유산 공간정보 Open API와 기상청 API허브·산림청 산불위험예보의 실시간 값을 지역별로 자동 연동하도록 설계할 수 있습니다.</p>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var clamp = function(v,min,max){ return Math.max(min, Math.min(max, v)); };
+
+  /* ---------------- Data ---------------- */
+  var MATERIAL_LABEL = { wood:"목조", stone:"석조", wall:"성곽", mound:"봉분(흙)", dolmen:"고인돌" };
+  var MATERIAL_WEIGHTS = {
+    wood:  { rain:0.70, wind:0.55, freeze:0.15, fire:0.90, humidity:0.85 },
+    stone: { rain:0.25, wind:0.15, freeze:0.80, fire:0.05, humidity:0.15 },
+    wall:  { rain:0.75, wind:0.25, freeze:0.55, fire:0.05, humidity:0.20 },
+    mound: { rain:0.90, wind:0.20, freeze:0.40, fire:0.10, humidity:0.35 },
+    dolmen:{ rain:0.25, wind:0.10, freeze:0.80, fire:0.05, humidity:0.10 }
+  };
+  var REGION_MOD = {
+    mountain:{ fire:10, freeze:5 },
+    coast:{ wind:10 },
+    river:{ rain:8 },
+    urban:{ fire:-5 },
+    plain:{}
+  };
+
+  var SITES = [
+    { id:"bulguksa", name:"불국사", region:"경북", regionTag:"mountain", era:"통일신라", material:"wood", heritageType:"국보 · 세계유산", desc:"토함산 자락의 목조 전각과 석축 기단이 함께 있는 사찰." },
+    { id:"seokguram", name:"석굴암", region:"경북", regionTag:"mountain", era:"통일신라", material:"stone", heritageType:"국보 · 세계유산", desc:"화강암을 쌓아 만든 인공 석굴 법당." },
+    { id:"cheomseongdae", name:"첨성대", region:"경북", regionTag:"plain", era:"신라", material:"stone", heritageType:"국보", desc:"경주 시내 평지에 노출된 화강암 천문대." },
+    { id:"buseoksa", name:"부석사 무량수전", region:"경북", regionTag:"mountain", era:"고려", material:"wood", heritageType:"국보", desc:"봉황산 중턱, 현존 최고(最古)급 목조 건축." },
+    { id:"hahoe", name:"하회마을", region:"경북", regionTag:"river", era:"조선", material:"wood", heritageType:"세계유산", desc:"낙동강이 휘도는 물돌이 지형의 전통 가옥군." },
+    { id:"haeinsa", name:"해인사 장경판전", region:"경남", regionTag:"mountain", era:"조선", material:"wood", heritageType:"국보 · 세계유산", desc:"가야산 산중, 팔만대장경을 보관하는 목조 판전." },
+    { id:"namhansanseong", name:"남한산성", region:"경기", regionTag:"mountain", era:"조선", material:"wall", heritageType:"사적 · 세계유산", desc:"산 능선을 따라 쌓은 석성." },
+    { id:"hwaseong", name:"수원화성", region:"경기", regionTag:"urban", era:"조선", material:"wall", heritageType:"사적 · 세계유산", desc:"도심을 둘러싼 벽돌·석재 혼축 성곽." },
+    { id:"jongmyo", name:"종묘", region:"서울", regionTag:"urban", era:"조선", material:"wood", heritageType:"국보 · 세계유산", desc:"왕실 제례를 위한 긴 목조 정전." },
+    { id:"huwon", name:"창덕궁 후원", region:"서울", regionTag:"urban", era:"조선", material:"wood", heritageType:"세계유산", desc:"정자와 연못이 어우러진 궁궐 후원." },
+    { id:"gongsanseong", name:"공산성", region:"충남", regionTag:"river", era:"백제", material:"wall", heritageType:"사적 · 세계유산", desc:"금강변 구릉을 두른 토·석 혼축 산성." },
+    { id:"muryeongneung", name:"무령왕릉", region:"충남", regionTag:"plain", era:"백제", material:"mound", heritageType:"사적 · 세계유산", desc:"흙으로 덮인 백제 왕릉 봉분." },
+    { id:"jeongnimsaji", name:"정림사지 오층석탑", region:"충남", regionTag:"plain", era:"백제", material:"stone", heritageType:"국보 · 세계유산", desc:"절터에 홀로 남은 백제 석탑." },
+    { id:"mireuksaji", name:"미륵사지 석탑", region:"전북", regionTag:"plain", era:"백제", material:"stone", heritageType:"국보 · 세계유산", desc:"동양 최대급 규모의 백제 석탑." },
+    { id:"hwasundolmen", name:"화순 고인돌 유적", region:"전남", regionTag:"plain", era:"청동기", material:"dolmen", heritageType:"세계유산", desc:"구릉 지대에 노출된 선사시대 거석군." },
+    { id:"ganghwadolmen", name:"강화 고인돌 유적", region:"인천", regionTag:"coast", era:"청동기", material:"dolmen", heritageType:"세계유산", desc:"강화도 야산에 자리한 탁자식 고인돌." }
+  ];
+
+  var LEVELS = [
+    { key:"blue",   label:"관심", min:0,  color:"var(--c-blue)",   tint:"var(--c-blue-tint)" },
+    { key:"yellow", label:"주의", min:25, color:"var(--c-yellow)", tint:"var(--c-yellow-tint)" },
+    { key:"orange", label:"경계", min:50, color:"var(--c-orange)", tint:"var(--c-orange-tint)" },
+    { key:"red",    label:"심각", min:75, color:"var(--c-red)",    tint:"var(--c-red-tint)" }
+  ];
+  function levelFor(score){
+    var found = LEVELS[0];
+    for (var i=0;i<LEVELS.length;i++){ if (score >= LEVELS[i].min) found = LEVELS[i]; }
+    return found;
+  }
+
+  var SCENARIOS = [
+    { key:"normal",  label:"평상시",        rain:5,   wind:6,  temp:16, fireIdx:1, humidity:55 },
+    { key:"monsoon", label:"장마 · 집중호우", rain:180, wind:12, temp:23, fireIdx:1, humidity:88 },
+    { key:"heat",    label:"한여름 폭염",     rain:0,   wind:4,  temp:34, fireIdx:2, humidity:32 },
+    { key:"freeze",  label:"한파 · 결빙",     rain:3,   wind:9,  temp:-1, fireIdx:1, humidity:42 },
+    { key:"typhoon", label:"태풍 · 강풍",     rain:140, wind:29, temp:24, fireIdx:1, humidity:82 },
+    { key:"wildfire",label:"대형 산불 경보",  rain:0,   wind:13, temp:19, fireIdx:4, humidity:18 }
+  ];
+
+  var SLIDERS = [
+    { key:"rain", label:"24시간 누적 강수량", min:0, max:250, step:5, unit:"mm" },
+    { key:"wind", label:"순간최대풍속", min:0, max:40, step:1, unit:"m/s" },
+    { key:"temp", label:"일 최저기온", min:-20, max:40, step:1, unit:"℃" },
+    { key:"fireIdx", label:"산불위험지수", min:1, max:4, step:1, unit:"", display:function(v){ return ["낮음","보통","높음","매우높음"][v-1]; } },
+    { key:"humidity", label:"평균 상대습도", min:10, max:100, step:1, unit:"%" }
+  ];
+
+  var FACTOR_LABEL = { rain:"강수", wind:"바람", freeze:"동결 · 융해", fire:"산불", humidity:"습도" };
+  var ADVICE_BY_FACTOR = {
+    rain: function(mat){
+      if (mat === "wood") return "지속된 강우로 목부재 함수율이 오르고 있습니다. 처마·기와 누수와 배수로 상태를 확인하세요.";
+      if (mat === "wall" || mat === "mound") return "누적 강우로 성벽·봉분 지반의 침하나 유실 위험이 커집니다. 배수로와 사면 균열을 순찰하세요.";
+      return "기단부와 주변 배수 상태를 점검하고 표면 이끼·오염 진행을 살펴보세요.";
+    },
+    wind: function(mat){
+      if (mat === "wood") return "강풍에 기와·서까래 등 부재 이탈 위험이 있습니다. 취약 부재 고정 상태를 확인하세요.";
+      return "강풍에 의한 낙석이나 구조물 전도 가능성을 점검하세요.";
+    },
+    freeze: function(){
+      return "기온이 영상과 영하를 오가며 동결·융해가 반복될 수 있습니다. 석재 표면의 균열·박리 진행 여부를 확인하세요.";
+    },
+    fire: function(){
+      return "산불 위험도가 높습니다. 방염포 점검, 주변 낙엽·가연물 제거, 소화시설 가동 준비가 필요합니다.";
+    },
+    humidity: function(){
+      return "높은 습도가 이어지며 목재 부후균·생물 피해 우려가 커집니다. 통풍과 방습 조치를 점검하세요.";
+    }
+  };
+  var URGENCY_PREFIX = {
+    yellow: "관심을 갖고 지켜봐야 할 상태입니다. ",
+    orange: "예방 조치를 준비할 단계입니다. ",
+    red: "즉시 현장 확인이 필요한 상태입니다. "
+  };
+
+  /* ---------------- State ---------------- */
+  var state = {
+    rain:5, wind:6, temp:16, fireIdx:1, humidity:55,
+    scenarioKey:"normal",
+    filterRegion:"all", filterMaterial:"all", sortKey:"risk",
+    selectedId:null
+  };
+
+  function loadState(){
+    try{
+      var saved = JSON.parse(localStorage.getItem("heritageWatch:v1") || "null");
+      if (saved) Object.assign(state, saved);
+    }catch(e){ /* ignore corrupted storage */ }
+  }
+  function saveState(){
+    try{
+      localStorage.setItem("heritageWatch:v1", JSON.stringify({
+        rain:state.rain, wind:state.wind, temp:state.temp, fireIdx:state.fireIdx, humidity:state.humidity,
+        scenarioKey:state.scenarioKey, filterRegion:state.filterRegion, filterMaterial:state.filterMaterial,
+        sortKey:state.sortKey, selectedId:state.selectedId
+      }));
+    }catch(e){ /* storage unavailable, continue silently */ }
+  }
+
+  /* ---------------- Scoring ---------------- */
+  function rawScores(){
+    var rain = clamp(state.rain/2.2, 0, 100);
+    var wind = clamp((state.wind-3)/27*100, 0, 100);
+    var freeze = clamp(100 - Math.abs(state.temp)*6, 0, 100);
+    var fire = clamp((state.fireIdx-1)/3*100, 0, 100);
+    var humidity = clamp((state.humidity-35)/55*100, 0, 100);
+    return { rain:rain, wind:wind, freeze:freeze, fire:fire, humidity:humidity };
+  }
+
+  function scoreSite(site){
+    var base = rawScores();
+    var mod = REGION_MOD[site.regionTag] || {};
+    var r = {
+      rain: clamp(base.rain + (mod.rain||0), 0, 100),
+      wind: clamp(base.wind + (mod.wind||0), 0, 100),
+      freeze: clamp(base.freeze + (mod.freeze||0), 0, 100),
+      fire: clamp(base.fire + (mod.fire||0), 0, 100),
+      humidity: clamp(base.humidity + (mod.humidity||0), 0, 100)
+    };
+    var w = MATERIAL_WEIGHTS[site.material];
+    var sumW = w.rain+w.wind+w.freeze+w.fire+w.humidity;
+    var total = (r.rain*w.rain + r.wind*w.wind + r.freeze*w.freeze + r.fire*w.fire + r.humidity*w.humidity)/sumW;
+    var contrib = {
+      rain:r.rain*w.rain, wind:r.wind*w.wind, freeze:r.freeze*w.freeze, fire:r.fire*w.fire, humidity:r.humidity*w.humidity
+    };
+    var topFactor = "rain", topVal = -1;
+    Object.keys(contrib).forEach(function(k){ if (contrib[k] > topVal){ topVal = contrib[k]; topFactor = k; } });
+    return { raw:r, total:total, topFactor:topFactor, level:levelFor(total) };
+  }
+
+  /* ---------------- Render: controls ---------------- */
+  function renderScenarioButtons(){
+    var row = document.getElementById("scenarioRow");
+    row.innerHTML = "";
+    SCENARIOS.forEach(function(sc){
+      var btn = document.createElement("button");
+      btn.className = "scenario-btn";
+      btn.type = "button";
+      btn.textContent = sc.label;
+      btn.setAttribute("aria-pressed", state.scenarioKey === sc.key ? "true" : "false");
+      btn.addEventListener("click", function(){
+        state.scenarioKey = sc.key;
+        state.rain = sc.rain; state.wind = sc.wind; state.temp = sc.temp;
+        state.fireIdx = sc.fireIdx; state.humidity = sc.humidity;
+        renderScenarioButtons();
+        renderSliders();
+        renderAll();
+        saveState();
+      });
+      row.appendChild(btn);
+    });
+  }
+
+  function renderSliders(){
+    var wrap = document.getElementById("sliders");
+    wrap.innerHTML = "";
+    SLIDERS.forEach(function(s){
+      var field = document.createElement("div");
+      field.className = "slider-field";
+      var label = document.createElement("label");
+      label.setAttribute("for", "slider-"+s.key);
+      var span = document.createElement("span"); span.textContent = s.label;
+      var out = document.createElement("output"); out.id = "out-"+s.key;
+      out.textContent = s.display ? s.display(state[s.key]) : (state[s.key] + s.unit);
+      label.appendChild(span); label.appendChild(out);
+      var input = document.createElement("input");
+      input.type = "range"; input.id = "slider-"+s.key;
+      input.min = s.min; input.max = s.max; input.step = s.step; input.value = state[s.key];
+      input.addEventListener("input", function(){
+        state[s.key] = Number(input.value);
+        state.scenarioKey = "custom";
+        renderScenarioButtons();
+        out.textContent = s.display ? s.display(state[s.key]) : (state[s.key] + s.unit);
+        renderAll();
+        saveState();
+      });
+      field.appendChild(label); field.appendChild(input);
+      wrap.appendChild(field);
+    });
+  }
+
+  /* ---------------- Render: summary ---------------- */
+  function renderSummary(scored){
+    var counts = { blue:0, yellow:0, orange:0, red:0 };
+    scored.forEach(function(s){ counts[s.score.level.key]++; });
+    var strip = document.getElementById("summaryStrip");
+    strip.innerHTML = "";
+    LEVELS.forEach(function(lv){
+      var el = document.createElement("div");
+      el.className = "stat";
+      el.style.setProperty("--stat-color", lv.color);
+      el.innerHTML = '<div class="n">'+counts[lv.key]+'</div><div class="lbl">'+lv.label+'</div>';
+      strip.appendChild(el);
+    });
+  }
+
+  /* ---------------- Render: filters ---------------- */
+  function populateFilters(){
+    var regionSel = document.getElementById("filterRegion");
+    var matSel = document.getElementById("filterMaterial");
+    var regions = Array.from(new Set(SITES.map(function(s){return s.region;}))).sort();
+    var materials = Array.from(new Set(SITES.map(function(s){return s.material;})));
+
+    regionSel.innerHTML = '<option value="all">전체 지역</option>' +
+      regions.map(function(r){ return '<option value="'+r+'">'+r+'</option>'; }).join("");
+    matSel.innerHTML = '<option value="all">전체 재질</option>' +
+      materials.map(function(m){ return '<option value="'+m+'">'+MATERIAL_LABEL[m]+'</option>'; }).join("");
+
+    regionSel.value = state.filterRegion;
+    matSel.value = state.filterMaterial;
+    document.getElementById("sortKey").value = state.sortKey;
+
+    regionSel.addEventListener("change", function(){ state.filterRegion = regionSel.value; renderAll(); saveState(); });
+    matSel.addEventListener("change", function(){ state.filterMaterial = matSel.value; renderAll(); saveState(); });
+    document.getElementById("sortKey").addEventListener("change", function(e){ state.sortKey = e.target.value; renderAll(); saveState(); });
+  }
+
+  /* ---------------- Render: list ---------------- */
+  function renderList(scored){
+    var filtered = scored.filter(function(s){
+      var okRegion = state.filterRegion === "all" || s.site.region === state.filterRegion;
+      var okMat = state.filterMaterial === "all" || s.site.material === state.filterMaterial;
+      return okRegion && okMat;
+    });
+    filtered.sort(function(a,b){
+      if (state.sortKey === "name") return a.site.name.localeCompare(b.site.name, "ko");
+      if (state.sortKey === "region") return a.site.region.localeCompare(b.site.region, "ko");
+      return b.score.total - a.score.total;
+    });
+
+    var list = document.getElementById("siteList");
+    list.innerHTML = "";
+    filtered.forEach(function(s){
+      var li = document.createElement("li");
+      var btn = document.createElement("button");
+      btn.className = "row";
+      btn.type = "button";
+      btn.style.setProperty("--row-color", s.score.level.color);
+      btn.setAttribute("aria-current", state.selectedId === s.site.id ? "true" : "false");
+      btn.innerHTML =
+        '<span class="row-main">' +
+          '<span class="name">'+s.site.name+'</span>' +
+          '<span class="meta">'+s.site.region+' · '+MATERIAL_LABEL[s.site.material]+' · '+s.site.era+'</span>' +
+        '</span>' +
+        '<span class="row-gauge">' +
+          '<span class="gauge-track"><span class="gauge-fill" style="width:'+s.score.total.toFixed(0)+'%; background:'+s.score.level.color+'"></span></span>' +
+          '<span class="score">'+s.score.total.toFixed(0)+'점</span>' +
+        '</span>' +
+        '<span class="badge" style="background:'+s.score.level.tint+'; color:'+s.score.level.color+'">'+s.score.level.label+'</span>';
+      btn.addEventListener("click", function(){
+        state.selectedId = s.site.id;
+        renderAll();
+        saveState();
+      });
+      li.appendChild(btn);
+      list.appendChild(li);
+    });
+  }
+
+  /* ---------------- Render: detail ---------------- */
+  function renderDetail(scored){
+    var panel = document.getElementById("detailPanel");
+    var found = scored.find(function(s){ return s.site.id === state.selectedId; });
+    if (!found){
+      panel.innerHTML = '<div class="detail-empty"><span class="mark" aria-hidden="true">☂</span>왼쪽 목록에서 유산을 선택하면<br/>세부 위험 요인과 권장 조치를 볼 수 있어요.</div>';
+      return;
+    }
+    var site = found.site, score = found.score;
+    var factorsHtml = ["rain","wind","freeze","fire","humidity"].map(function(f){
+      var v = score.raw[f];
+      return '<div class="factor">' +
+        '<div class="factor-row"><span>'+FACTOR_LABEL[f]+'</span><span class="fv">'+v.toFixed(0)+'</span></div>' +
+        '<div class="factor-track"><div class="factor-fill" style="width:'+v.toFixed(0)+'%; background:'+score.level.color+'"></div></div>' +
+      '</div>';
+    }).join("");
+
+    var adviceText;
+    if (score.level.key === "blue"){
+      adviceText = "현재 두드러진 기상 위험 요인은 확인되지 않습니다. 정기 점검 주기를 유지하세요.";
+    } else {
+      var prefix = URGENCY_PREFIX[score.level.key] || "";
+      adviceText = prefix + ADVICE_BY_FACTOR[score.topFactor](site.material);
+    }
+
+    panel.innerHTML =
+      '<h3 class="detail-name">'+site.name+'</h3>' +
+      '<div class="detail-meta">'+site.region+' · '+site.era+' · '+site.heritageType+' · '+MATERIAL_LABEL[site.material]+'</div>' +
+      '<span class="detail-badge" style="background:'+score.level.tint+'; color:'+score.level.color+'">'+score.level.label+' · '+score.total.toFixed(0)+'점</span>' +
+      factorsHtml +
+      '<div class="advice-box"><div class="h">권장 조치</div>'+adviceText+'</div>' +
+      '<p class="desc">'+site.desc+'</p>';
+  }
+
+  /* ---------------- Master render ---------------- */
+  function renderAll(){
+    var scored = SITES.map(function(site){ return { site:site, score:scoreSite(site) }; });
+    renderSummary(scored);
+    renderList(scored);
+    renderDetail(scored);
+  }
+
+  function tickClock(){
+    var now = new Date();
+    var pad = function(n){ return String(n).padStart(2,"0"); };
+    document.getElementById("clock").textContent =
+      "시뮬레이션 기준 " + now.getFullYear()+"."+pad(now.getMonth()+1)+"."+pad(now.getDate())+" "+pad(now.getHours())+":"+pad(now.getMinutes());
+  }
+
+  /* ---------------- Init ---------------- */
+  loadState();
+  populateFilters();
+  renderScenarioButtons();
+  renderSliders();
+  renderAll();
+  tickClock();
+  setInterval(tickClock, 30000);
+
+})();
+</script>
+</body>
+</html>
