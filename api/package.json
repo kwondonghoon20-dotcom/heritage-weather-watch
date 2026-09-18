@@ -1,0 +1,13 @@
+{
+  "name": "api",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "dotenv": "^17.4.2"
+  },
+  "devDependencies": {
+    "@vercel/node": "^3.2.24",
+    "@types/node": "^22.20.3",
+    "typescript": "^5.9.3"
+  }
+}
