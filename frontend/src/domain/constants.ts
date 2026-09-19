@@ -1,4 +1,4 @@
-import type { FactorKey, Level, MaterialKey, ScenarioPreset } from "../types";
+import type { ElevationProfile, FactorKey, Level, MaterialKey, ScenarioPreset } from "../types";
 
 // 원본 프로토타입(legacy/heritage-weather-watch.html)의 계산 로직을 그대로 이식.
 export const MATERIAL_LABEL: Record<MaterialKey, string> = {
@@ -23,6 +23,14 @@ export const REGION_MOD: Record<string, Partial<Record<FactorKey, number>>> = {
   river: { rain: 8 },
   urban: { fire: -5 },
   plain: {},
+};
+
+// 지형 위치별 강수 raw 점수 배율. 같은 강수량이어도 저지대는 침수·유실 위험이 크고 능선은 물이 빠져 작다.
+export const ELEVATION_RAIN_MULTIPLIER: Record<ElevationProfile, number> = {
+  "flood-prone": 1.2,
+  plain: 1.0,
+  hillside: 0.7,
+  ridge: 0.5,
 };
 
 export const LEVELS: Level[] = [

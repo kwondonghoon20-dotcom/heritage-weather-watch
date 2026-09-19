@@ -1,5 +1,5 @@
 import type { ActiveWarning, FactorKey, FactorScores, HeritageSite, ScoreResult, WeatherState } from "../types";
-import { MATERIAL_WEIGHTS, REGION_MOD, WARNING_BOOST, WRN_TO_FACTOR, levelFor } from "./constants";
+import { ELEVATION_RAIN_MULTIPLIER, MATERIAL_WEIGHTS, REGION_MOD, WARNING_BOOST, WRN_TO_FACTOR, levelFor } from "./constants";
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
 
@@ -32,8 +32,11 @@ export function scoreSite(site: HeritageSite, weather: WeatherState, activeWarni
   const base = rawScores(weather);
   const mod = REGION_MOD[site.regionTag] ?? {};
   const boost = warningBoosts(activeWarnings);
+  // 지형 배율은 날씨에서 나온 강수 raw 점수에만 곱한다. 지역 보정과 특보 가산은 배율 뒤에 더해져
+  // 능선이라도 기상청 특보의 가산치가 깎이지 않는다. 최종 clamp는 아래에서 한 번만 한다.
+  const rainScaled = base.rain * ELEVATION_RAIN_MULTIPLIER[site.elevationProfile];
   const r: FactorScores = {
-    rain: clamp(base.rain + (mod.rain ?? 0) + (boost.rain ?? 0), 0, 100),
+    rain: clamp(rainScaled + (mod.rain ?? 0) + (boost.rain ?? 0), 0, 100),
     wind: clamp(base.wind + (mod.wind ?? 0) + (boost.wind ?? 0), 0, 100),
     freeze: clamp(base.freeze + (mod.freeze ?? 0) + (boost.freeze ?? 0), 0, 100),
     fire: clamp(base.fire + (mod.fire ?? 0) + (boost.fire ?? 0), 0, 100),

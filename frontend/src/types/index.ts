@@ -1,5 +1,7 @@
 export type MaterialKey = "wood" | "stone" | "wall" | "mound" | "dolmen";
 export type RegionTag = "mountain" | "coast" | "river" | "urban" | "plain";
+// 지형 위치에 따른 강수 피해 취약도: 침수 위험 저지대 / 평지 / 산기슭·구릉 / 능선·고지
+export type ElevationProfile = "flood-prone" | "plain" | "hillside" | "ridge";
 export type FactorKey = "rain" | "wind" | "freeze" | "fire" | "humidity";
 export type LevelKey = "blue" | "yellow" | "orange" | "red";
 
@@ -10,6 +12,7 @@ export interface HeritageSite {
   lng: number;
   region: string;
   regionTag: RegionTag;
+  elevationProfile: ElevationProfile;
   era: string;
   material: MaterialKey;
   heritageType: string;
