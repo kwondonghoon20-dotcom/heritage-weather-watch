@@ -39,11 +39,21 @@ export interface Level {
 
 export type FactorScores = Record<FactorKey, number>;
 
+export type WarningLevel = "주의보" | "경보";
+
+// 기상청 특보. wrn은 특보종류를 한글 그대로(호우/강풍/한파/폭염/대설/태풍/건조 등) 담는다.
+export interface ActiveWarning {
+  wrn: string;
+  level: WarningLevel;
+}
+
 export interface ScoreResult {
   raw: FactorScores;
   total: number;
   topFactor: FactorKey;
   level: Level;
+  // 점수 계산에 반영된 발효 중 특보 (시나리오 모드/특보 없음이면 빈 배열)
+  warnings: ActiveWarning[];
 }
 
 export interface ScoredSite {
@@ -58,7 +68,11 @@ export type ViewMode = "scenario" | "live";
 // · ready: 갱신 완료(개별 유산 실패는 score:null로 별도 표시)
 export type LivePhase = "initial-loading" | "refreshing" | "ready";
 
+export interface LiveSiteData extends WeatherState {
+  warnings: ActiveWarning[];
+}
+
 export interface LiveApiResponse {
   updatedAt: string;
-  sites: Record<string, WeatherState | null>;
+  sites: Record<string, LiveSiteData | null>;
 }

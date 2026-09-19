@@ -75,6 +75,21 @@ export const SLIDERS: SliderConfig[] = [
   { key: "humidity", label: "평균 상대습도", min: 10, max: 100, step: 1, unit: "%" },
 ];
 
+// 기상특보 → 위험요인 매핑. 여기에 없는 특보(안개/황사/지진해일/폭풍해일/열대야 등)는 점수에 반영하지 않는다.
+export const WRN_TO_FACTOR: Record<string, FactorKey> = {
+  호우: "rain",
+  대설: "rain",
+  강풍: "wind",
+  태풍: "wind",
+  풍랑: "wind",
+  한파: "freeze",
+  폭염: "fire",
+  건조: "fire",
+};
+
+// 요인 raw 점수(0~100)에 더하는 가산치. 같은 요인에 여러 특보가 걸리면 합산하지 않고 최댓값 하나만 적용한다.
+export const WARNING_BOOST = { 주의보: 15, 경보: 30 } as const;
+
 export const FACTOR_LABEL: Record<FactorKey, string> = {
   rain: "강수",
   wind: "바람",

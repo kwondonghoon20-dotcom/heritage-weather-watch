@@ -280,6 +280,28 @@ button {
   line-height: 1;
 }
 
+/* 기상특보 발효 중: 마커 우상단 경고 표식 */
+.marker-warning {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid #fff;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 11px;
+  text-align: center;
+}
+.marker-warning.is-alert {
+  background: #c62828;
+}
+.marker-warning.is-advisory {
+  background: #e08a1e;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .heritage-marker-dot.marker-skeleton,
   .heritage-marker-dot.marker-refreshing,
@@ -298,6 +320,29 @@ button {
   background: var(--line);
   border-radius: 3px;
   animation: skeleton-shimmer 1.3s ease-in-out infinite;
+}
+
+/* 사이드패널 특보 칩 */
+.warning-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 14px;
+}
+.warning-chip {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+}
+.warning-chip.is-alert {
+  color: #c62828;
+  background: rgba(198, 40, 40, 0.12);
+}
+.warning-chip.is-advisory {
+  color: #e08a1e;
+  background: rgba(224, 138, 30, 0.14);
 }
 
 .refreshing-tag {

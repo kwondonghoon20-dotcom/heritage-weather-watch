@@ -73,6 +73,16 @@ export function SidePanel({ scored, phase }: Props) {
           ⟳ 갱신 중…
         </span>
       )}
+      {score.warnings.length > 0 && (
+        <div className="warning-chips" aria-label="발효 중인 기상특보">
+          {score.warnings.map((w) => (
+            <span key={`${w.wrn}-${w.level}`} className={`warning-chip ${w.level === "경보" ? "is-alert" : "is-advisory"}`}>
+              {w.level === "경보" ? "🚨" : "⚠️"} {w.wrn}
+              {w.level} 발효 중
+            </span>
+          ))}
+        </div>
+      )}
 
       {FACTOR_ORDER.map((f) => {
         const v = score.raw[f];

@@ -1,5 +1,5 @@
-import type { FactorKey, FactorScores, HeritageSite, ScoreResult, WeatherState } from "../types";
-import { MATERIAL_WEIGHTS, REGION_MOD, levelFor } from "./constants";
+import type { ActiveWarning, FactorKey, FactorScores, HeritageSite, ScoreResult, WeatherState } from "../types";
+import { MATERIAL_WEIGHTS, REGION_MOD, WARNING_BOOST, WRN_TO_FACTOR, levelFor } from "./constants";
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
 
@@ -14,15 +14,29 @@ export function rawScores(weather: WeatherState): FactorScores {
   };
 }
 
+// 발효 중 특보를 요인별 가산치로 변환한다. 같은 요인에 여러 특보가 걸리면(예: 강풍경보+태풍경보 → wind)
+// 합산하지 않고 그중 최댓값 하나만 쓴다.
+function warningBoosts(warnings: ActiveWarning[]): Partial<Record<FactorKey, number>> {
+  const boosts: Partial<Record<FactorKey, number>> = {};
+  for (const w of warnings) {
+    const factor = WRN_TO_FACTOR[w.wrn];
+    if (!factor) continue;
+    boosts[factor] = Math.max(boosts[factor] ?? 0, WARNING_BOOST[w.level]);
+  }
+  return boosts;
+}
+
 // 원본 프로토타입의 scoreSite(): 지역 보정 + 재질별 가중 평균으로 최종 점수 산출.
-export function scoreSite(site: HeritageSite, weather: WeatherState): ScoreResult {
+// activeWarnings(실시간 모드에서만 전달)는 해당 요인의 raw 점수에 가산될 뿐, 생략하면 기존 수식과 완전히 동일하다.
+export function scoreSite(site: HeritageSite, weather: WeatherState, activeWarnings: ActiveWarning[] = []): ScoreResult {
   const base = rawScores(weather);
   const mod = REGION_MOD[site.regionTag] ?? {};
+  const boost = warningBoosts(activeWarnings);
   const r: FactorScores = {
-    rain: clamp(base.rain + (mod.rain ?? 0), 0, 100),
-    wind: clamp(base.wind + (mod.wind ?? 0), 0, 100),
-    freeze: clamp(base.freeze + (mod.freeze ?? 0), 0, 100),
-    fire: clamp(base.fire + (mod.fire ?? 0), 0, 100),
+    rain: clamp(base.rain + (mod.rain ?? 0) + (boost.rain ?? 0), 0, 100),
+    wind: clamp(base.wind + (mod.wind ?? 0) + (boost.wind ?? 0), 0, 100),
+    freeze: clamp(base.freeze + (mod.freeze ?? 0) + (boost.freeze ?? 0), 0, 100),
+    fire: clamp(base.fire + (mod.fire ?? 0) + (boost.fire ?? 0), 0, 100),
     humidity: clamp(base.humidity + (mod.humidity ?? 0), 0, 100),
   };
 
@@ -46,5 +60,5 @@ export function scoreSite(site: HeritageSite, weather: WeatherState): ScoreResul
     }
   });
 
-  return { raw: r, total, topFactor, level: levelFor(total) };
+  return { raw: r, total, topFactor, level: levelFor(total), warnings: activeWarnings };
 }

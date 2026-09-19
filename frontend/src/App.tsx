@@ -52,7 +52,7 @@ export default function App() {
     if (mode === "live") {
       return sites.map((site) => {
         const liveWeather = live.data?.sites[site.id] ?? null;
-        return { site, score: liveWeather ? scoreSite(site, liveWeather) : null };
+        return { site, score: liveWeather ? scoreSite(site, liveWeather, liveWeather.warnings ?? []) : null };
       });
     }
     return sites.map((site) => ({ site, score: scoreSite(site, weather) }));

@@ -3,6 +3,7 @@ import { SITE_SIGUNGU } from "./data/siteAdminMap";
 import { latLonToGrid, type GridPoint } from "./domain/grid";
 import { getWeatherForGrid } from "./services/kmaClient";
 import { getFireIndexBySigungu, bucketFireIdx } from "./services/forestFireClient";
+import { getWarningsByKeyword, regionKeyword, type ActiveWarning } from "./services/warningClient";
 
 export interface LiveSiteWeather {
   rain: number;
@@ -10,6 +11,8 @@ export interface LiveSiteWeather {
   temp: number;
   fireIdx: number;
   humidity: number;
+  // 현재 발효 중인 기상특보. 특보 조회 실패 시에도 빈 배열 — 특보는 보조 정보라 유산을 "데이터 없음"으로 만들지 않는다.
+  warnings: ActiveWarning[];
 }
 
 export interface LiveDataResponse {
@@ -28,9 +31,12 @@ export async function getLiveData(): Promise<LiveDataResponse> {
 
   const sigunguCodes = [...new Set(Object.values(SITE_SIGUNGU).map((a) => a.code))];
 
-  const [gridWeatherEntries, fireIndexBySigungu] = await Promise.all([
+  const warningKeywords = [...new Set(Object.values(SITE_SIGUNGU).map((a) => regionKeyword(a.name)))];
+
+  const [gridWeatherEntries, fireIndexBySigungu, warningsByKeyword] = await Promise.all([
     Promise.all([...uniqueGrids.entries()].map(async ([key, grid]) => [key, await getWeatherForGrid(grid)] as const)),
     getFireIndexBySigungu(sigunguCodes),
+    getWarningsByKeyword(warningKeywords),
   ]);
   const weatherByGridKey = new Map(gridWeatherEntries);
 
@@ -55,6 +61,7 @@ export async function getLiveData(): Promise<LiveDataResponse> {
       temp: weather.temp,
       humidity: weather.humidity,
       fireIdx: bucketFireIdx(meanavg),
+      warnings: (admin && warningsByKeyword?.get(regionKeyword(admin.name))) || [],
     };
   }
 
