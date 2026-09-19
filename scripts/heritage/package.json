@@ -1,0 +1,24 @@
+{
+  "name": "heritage-data-scripts",
+  "private": true,
+  "type": "module",
+  "description": "gis-heritage.go.kr 국가유산 공간정보(Shapefile) 다운로드 및 GeoJSON 변환 스크립트",
+  "scripts": {
+    "download": "node download.mjs",
+    "convert": "node convert.mjs",
+    "merge": "node merge-duplicates.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@turf/area": "^7.4.0",
+    "@turf/boolean-point-in-polygon": "^7.4.0",
+    "@turf/centroid": "^7.4.0",
+    "@turf/helpers": "^7.4.0",
+    "@turf/intersect": "^7.4.0",
+    "polylabel": "^2.1.0",
+    "proj4": "^2.22.0",
+    "shapefile": "^0.6.6"
+  }
+}
