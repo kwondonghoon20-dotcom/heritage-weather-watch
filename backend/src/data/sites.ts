@@ -17,7 +17,7 @@ export const SITES: BackendSite[] = [
   { id: "jongmyo", lat: 37.5745, lng: 126.9945 },
   { id: "huwon", lat: 37.5824, lng: 126.9911 },
   { id: "gongsanseong", lat: 36.4595, lng: 127.1265 },
-  { id: "muryeongneung", lat: 36.4634, lng: 127.1223 },
+  { id: "muryeongneung", lat: 36.4637, lng: 127.1151 },
   { id: "jeongnimsaji", lat: 36.2789, lng: 126.9107 },
   { id: "mireuksaji", lat: 36.0124, lng: 127.0306 },
   { id: "hwasundolmen", lat: 34.9835, lng: 126.9895 },

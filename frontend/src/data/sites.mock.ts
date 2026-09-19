@@ -13,7 +13,7 @@ export const SITES: HeritageSite[] = [
   { id: "jongmyo", name: "종묘", lat: 37.5745, lng: 126.9945, region: "서울", regionTag: "urban", elevationProfile: "plain", era: "조선", material: "wood", heritageType: "국보 · 세계유산", desc: "왕실 제례를 위한 긴 목조 정전." },
   { id: "huwon", name: "창덕궁 후원", lat: 37.5824, lng: 126.9911, region: "서울", regionTag: "urban", elevationProfile: "plain", era: "조선", material: "wood", heritageType: "세계유산", desc: "정자와 연못이 어우러진 궁궐 후원." },
   { id: "gongsanseong", name: "공산성", lat: 36.4595, lng: 127.1265, region: "충남", regionTag: "river", elevationProfile: "hillside", era: "백제", material: "wall", heritageType: "사적 · 세계유산", desc: "금강변 구릉을 두른 토·석 혼축 산성." },
-  { id: "muryeongneung", name: "무령왕릉", lat: 36.4634, lng: 127.1223, region: "충남", regionTag: "plain", elevationProfile: "plain", era: "백제", material: "mound", heritageType: "사적 · 세계유산", desc: "흙으로 덮인 백제 왕릉 봉분." },
+  { id: "muryeongneung", name: "무령왕릉", lat: 36.4637, lng: 127.1151, region: "충남", regionTag: "plain", elevationProfile: "plain", era: "백제", material: "mound", heritageType: "사적 · 세계유산", desc: "흙으로 덮인 백제 왕릉 봉분." },
   { id: "jeongnimsaji", name: "정림사지 오층석탑", lat: 36.2789, lng: 126.9107, region: "충남", regionTag: "plain", elevationProfile: "plain", era: "백제", material: "stone", heritageType: "국보 · 세계유산", desc: "절터에 홀로 남은 백제 석탑." },
   { id: "mireuksaji", name: "미륵사지 석탑", lat: 36.0124, lng: 127.0306, region: "전북", regionTag: "plain", elevationProfile: "plain", era: "백제", material: "stone", heritageType: "국보 · 세계유산", desc: "동양 최대급 규모의 백제 석탑." },
   { id: "hwasundolmen", name: "화순 고인돌 유적", lat: 34.9835, lng: 126.9895, region: "전남", regionTag: "plain", elevationProfile: "hillside", era: "청동기", material: "dolmen", heritageType: "세계유산", desc: "구릉 지대에 노출된 선사시대 거석군." },
