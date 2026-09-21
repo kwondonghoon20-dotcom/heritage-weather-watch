@@ -72,3 +72,19 @@ export const POINTS_PER_SITE = 1 + BEARINGS.length;
 export function samplePoints(lat, lng) {
   return [{ lat, lng }, ...BEARINGS.map((b) => offsetPoint(lat, lng, RING_METERS, b))];
 }
+
+// 점이 폴리곤(Polygon / MultiPolygon) 안에 있는지 — 바깥 링 안이면서 구멍(안쪽 링) 밖이어야 한다.
+// 구멍을 무시하면 성벽 띠가 둘러싼 성 내부(북한산성의 행궁지·태고사처럼)까지 "안"으로 잘못 센다.
+const inRing = (lat, lng, ring) => {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i];
+    const [xj, yj] = ring[j];
+    if (yi > lat !== yj > lat && lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+};
+export function pointInPolygon(lat, lng, geometry) {
+  const polys = geometry.type === "Polygon" ? [geometry.coordinates] : geometry.coordinates;
+  return polys.some((rings) => inRing(lat, lng, rings[0]) && !rings.slice(1).some((hole) => inRing(lat, lng, hole)));
+}

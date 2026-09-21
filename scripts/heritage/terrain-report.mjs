@@ -6,7 +6,7 @@
 //   node scripts/heritage/terrain-report.mjs preview           표고가 있는 유산에 규칙을 적용했을 때의 분포(카탈로그는 바꾸지 않음)
 import fs from "node:fs";
 import path from "node:path";
-import { ELEVATION_CACHE, GEOJSON_FILE, HERE, WATER_CACHE, loadCatalog, readJson } from "./lib/common.mjs";
+import { ELEVATION_CACHE, GEOJSON_FILE, HERE, WATER_CACHE, loadCatalog, pointInPolygon, readJson } from "./lib/common.mjs";
 import { TERRAIN_RULES, classifyTerrain, terrainFeatures } from "./terrain-rules.mjs";
 
 const [mode = "check16", arg] = process.argv.slice(2);
@@ -45,14 +45,6 @@ if (mode === "top-relief") {
   const N = Number(arg ?? 15);
   const rad = Math.PI / 180;
   const meters = (a, b) => Math.hypot((a.lat - b.lat) * 110540, (a.lng - b.lng) * 111320 * Math.cos(a.lat * rad));
-  const insidePoly = (lat, lng, g) => (g.type === "Polygon" ? [g.coordinates[0]] : g.coordinates.map((p) => p[0])).some((ring) => {
-    let c = false;
-    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-      const [xi, yi] = ring[i], [xj, yj] = ring[j];
-      if (yi > lat !== yj > lat && lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) c = !c;
-    }
-    return c;
-  });
   const large = catalog.filter((s) => (byId.get(s.id)?.properties.면적 ?? 0) >= 100000);
   const withEl = large.filter((s) => valid(elevation, s));
   console.log(`면적 10만㎡ 이상 ${large.length}건 중 표고를 받은 ${withEl.length}건에서 국소 고저차(반경 500m 9점) 상위 ${N}건\n`);
@@ -60,8 +52,9 @@ if (mode === "top-relief") {
     .map((s) => {
       const f = byId.get(s.id);
       const { elevation: z0, relief } = terrainFeatures(elevation[s.id].z);
-      // 이 폴리곤 안에 대표점이 있는 다른 유산들(예: 불국사 사적 안의 대웅전·다보탑)까지의 평균 거리 — 멀면 대표점이 건물군에서 벗어났을 수 있다
-      const inner = catalog.filter((o) => o.id !== s.id && insidePoly(o.lat, o.lng, f.geometry));
+      // 이 폴리곤 안(구멍 제외)에 대표점이 있는 다른 유산들(예: 불국사 사적 안의 대웅전·다보탑)까지의 평균 거리 — 멀면 대표점이 건물군에서 벗어났을 수 있다.
+      // 성곽처럼 띠 모양이라 성 내부가 구멍인 폴리곤은 내부 유산이 '안'에 들지 않는다(구멍을 무시하면 북한산성에서 가짜 신호가 났다).
+      const inner = catalog.filter((o) => o.id !== s.id && pointInPolygon(o.lat, o.lng, f.geometry));
       const cen = inner.length ? { lat: inner.reduce((a, o) => a + o.lat, 0) / inner.length, lng: inner.reduce((a, o) => a + o.lng, 0) / inner.length } : null;
       return { s, area: f.properties.면적, z0, relief, inner: inner.length, innerDist: cen ? meters(s, cen) : null };
     })

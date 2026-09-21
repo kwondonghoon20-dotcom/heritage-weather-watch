@@ -19,7 +19,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { ELEVATION_CACHE, WATER_CACHE, readJson } from "./lib/common.mjs";
+import { ELEVATION_CACHE, WATER_CACHE, pointInPolygon, readJson } from "./lib/common.mjs";
 import { classifyTerrain } from "./terrain-rules.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -44,20 +44,6 @@ const coordFixes = JSON.parse(fs.readFileSync(COORD_FIXES_FILE, "utf8")).fixes;
 if (new Set(coordFixes.map((c) => c.code)).size !== coordFixes.length) throw new Error("coordinate-fixes.json 에 중복 유산코드가 있음");
 const fixByCode = new Map(coordFixes.map((c) => [c.code, c]));
 let appliedFixes = 0;
-
-// 점이 폴리곤(Polygon/MultiPolygon 의 바깥 링) 안에 있는지 — 보정 좌표가 엉뚱한 곳이 아닌지 확인하는 용도
-function insidePolygon(lat, lng, geometry) {
-  const rings = geometry.type === "Polygon" ? [geometry.coordinates[0]] : geometry.coordinates.map((p) => p[0]);
-  return rings.some((ring) => {
-    let c = false;
-    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-      const [xi, yi] = ring[i];
-      const [xj, yj] = ring[j];
-      if (yi > lat !== yj > lat && lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) c = !c;
-    }
-    return c;
-  });
-}
 
 const features = JSON.parse(fs.readFileSync(IN_FILE, "utf8")).features;
 const round5 = (v) => Math.round(v * 1e5) / 1e5;
@@ -85,7 +71,7 @@ for (const f of features) {
   const fix = fixByCode.get(p.유산코드);
   if (fix) {
     if (fix.name !== p.국가유산명) throw new Error(`coordinate-fixes.json 이름 불일치: ${p.유산코드} → ${p.국가유산명} (기대 ${fix.name})`);
-    if (!insidePolygon(fix.lat, fix.lng, f.geometry)) throw new Error(`coordinate-fixes.json 보정 좌표가 폴리곤 밖: ${p.유산코드} ${p.국가유산명} (${fix.lat}, ${fix.lng})`);
+    if (!pointInPolygon(fix.lat, fix.lng, f.geometry)) throw new Error(`coordinate-fixes.json 보정 좌표가 폴리곤 밖: ${p.유산코드} ${p.국가유산명} (${fix.lat}, ${fix.lng})`);
     lat = round5(fix.lat);
     lng = round5(fix.lng);
     appliedFixes += 1;

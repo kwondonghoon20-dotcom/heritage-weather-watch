@@ -87,3 +87,15 @@ test("캐시가 카탈로그 좌표와 어긋나지 않는다(좌표를 고치�
     }
   }
 });
+
+test("점-폴리곤 포함 판정은 구멍(안쪽 링)을 반영한다 — 성벽 띠 안쪽 성 내부는 '안'이 아니다(북한산성 오탐 사례)", async () => {
+  const { pointInPolygon } = await load("lib/common.mjs");
+  // 경도 0~10, 위도 0~10 정사각형에서 경도 3~7, 위도 3~7 구멍을 뺀 고리(성벽 띠 모양)
+  const ring = { type: "Polygon", coordinates: [[[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]], [[3, 3], [7, 3], [7, 7], [3, 7], [3, 3]]] };
+  assert.equal(pointInPolygon(1, 1, ring), true); // 띠 위
+  assert.equal(pointInPolygon(5, 5, ring), false); // 구멍(성 내부)
+  assert.equal(pointInPolygon(20, 20, ring), false); // 바깥
+  const multi = { type: "MultiPolygon", coordinates: [ring.coordinates, [[[20, 20], [30, 20], [30, 30], [20, 30], [20, 20]]]] };
+  assert.equal(pointInPolygon(25, 25, multi), true);
+  assert.equal(pointInPolygon(5, 5, multi), false);
+});
