@@ -17,11 +17,32 @@ if (!process.env.VERCEL) {
   }
 }
 
+// 양의 정수 환경변수를 읽는다. 비었거나 형식이 틀리면 기본값을 쓰고 경고한다(잘못된 값으로 조용히 호출량이 폭증하는 것을 막는다).
+function intEnv(name: string, fallback: number, { min, max }: { min: number; max: number }): number {
+  const raw = process.env[name];
+  if (raw === undefined || raw.trim() === "") return fallback;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < min || n > max) {
+    console.warn(`[config] ${name}="${raw}" 는 ${min}~${max} 사이 정수여야 합니다 — 기본값 ${fallback}을 씁니다.`);
+    return fallback;
+  }
+  return n;
+}
+
 export const ENV = {
   kmaApiKey: process.env.KMA_API_KEY ?? "",
-  // 기상청 초단기실황(data.go.kr) 일일 호출 한도는 10,000건. 이 프로세스가 하루에 쓸 수 있는 호출 수의 상한(여유를 두고 9,000).
-  // 인스턴스가 여러 개면 인스턴스마다 따로 센다 — 어디까지나 폭주 방지용 안전장치다.
-  kmaDailyCallLimit: Number(process.env.KMA_DAILY_CALL_LIMIT ?? 9000),
+  // 기상청 초단기실황(data.go.kr) 일일 호출 한도는 10,000건. 이 프로세스가 하루에 쓸 수 있는 호출 수의 상한(여유를 두고 8,000).
+  // 741격자를 3시간마다 갱신하면 하루 5,928건이다. 인스턴스가 여러 개면 인스턴스마다 따로 센다 — 어디까지나 폭주 방지용 안전장치다.
+  kmaDailyCallLimit: intEnv("KMA_DAILY_CALL_LIMIT", 8000, { min: 1, max: 1_000_000 }),
+  // 격자 날씨를 다시 조회하는 주기(시간). 시계 기준 구간(KST 0시부터 N시간 단위)으로 나눠 구간마다 격자당 최대 1번만 조회한다.
+  // 하루 호출량 = 격자 수 × (24 ÷ N). 24의 약수(1,2,3,4,6,8,12,24)를 쓰면 구간이 하루에 딱 맞아떨어진다.
+  kmaCacheHours: intEnv("KMA_CACHE_HOURS", 3, { min: 1, max: 24 }),
+  // /api/live 한 번의 응답에서 기상청 격자 조회에 쓸 수 있는 시간(ms). 넘으면 못 채운 격자는 직전 값(없으면 "값 없음")으로 응답하고
+  // 다음 요청이 이어서 채운다. 서버리스 함수 제한 시간(10초)을 넘기지 않으려는 장치. 0이면 제한 없음(전부 기다린다).
+  kmaLiveDeadlineMs: intEnv("KMA_LIVE_DEADLINE_MS", 7000, { min: 0, max: 600_000 }),
+  // 개발 서버(tsx watch)는 파일을 저장할 때마다 재시작해 메모리 캐시와 호출 카운터가 사라진다 — 그때마다 741건이 다시 나가지 않도록
+  // 격자 캐시와 오늘 호출 수를 .cache/ 파일에 저장한다. Vercel(파일시스템이 인스턴스별·임시)에서는 끄고, KMA_DISK_CACHE=0 으로도 끌 수 있다.
+  kmaDiskCache: !process.env.VERCEL && process.env.KMA_DISK_CACHE !== "0",
   forestFireApiKey: process.env.FOREST_FIRE_API_KEY ?? "",
   // apihub.kma.go.kr 자체 인증키 (data.go.kr 공용키인 KMA_API_KEY와 다른 키 체계)
   kmaHubApiKey: process.env.KMA_HUB_API_KEY ?? "",

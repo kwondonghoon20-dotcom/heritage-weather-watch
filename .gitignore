@@ -19,3 +19,6 @@ data/heritage-full.geojson
 data/heritage-merged.geojson
 data/heritage-outdoor.geojson
 data/heritage-classified.geojson
+
+# 개발용 기상청 격자 캐시 (backend/src/services/kmaClient.ts)
+.cache/

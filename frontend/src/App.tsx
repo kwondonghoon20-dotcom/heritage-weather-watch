@@ -9,7 +9,7 @@ import { SCENARIOS } from "./domain/constants";
 import { isMaterialFilterValue, type MaterialFilterValue } from "./domain/materialFilter";
 import { scoreSite } from "./domain/scoring";
 import { useHeritageData } from "./hooks/useHeritageData";
-import { useLiveWeather } from "./hooks/useLiveWeather";
+import { resolveLiveSite, useLiveWeather } from "./hooks/useLiveWeather";
 import type { LivePhase, MaterialKey, ScoredSite, ViewMode, WeatherState } from "./types";
 
 const STORAGE_KEY = "heritageWeatherMap:v1";
@@ -69,9 +69,9 @@ export default function App() {
   const scored: ScoredSite[] = useMemo(() => {
     if (mode === "live") {
       return sites.map((site) => {
-        // 실시간 값은 시군구별로 내려온다 — 유산의 시군구 코드로 찾는다. 코드가 없거나 그 시군구 조회가 실패했으면 "데이터 없음".
-        const liveWeather = (site.sigunguCode ? live.data?.regions[site.sigunguCode] : null) ?? null;
-        return { site, score: liveWeather ? scoreSite(site, liveWeather, liveWeather.warnings ?? []) : null };
+        // 날씨는 유산이 속한 격자별, 산불위험·특보는 시군구별로 내려온다. 어느 한쪽이라도 없으면 "데이터 없음".
+        const liveWeather = resolveLiveSite(site, live.data);
+        return { site, score: liveWeather ? scoreSite(site, liveWeather, liveWeather.warnings) : null };
       });
     }
     return sites.map((site) => ({ site, score: scoreSite(site, weather) }));
@@ -130,7 +130,15 @@ export default function App() {
       {mode === "scenario" ? (
         <ScenarioControls weather={weather} scenarioKey={scenarioKey} onScenarioSelect={handleScenarioSelect} onWeatherChange={handleWeatherChange} />
       ) : (
-        <LiveStatusBar updatedAt={live.data?.updatedAt ?? null} loading={live.loading} error={live.error} missingCount={missingCount} />
+        <LiveStatusBar
+          updatedAt={live.data?.updatedAt ?? null}
+          weatherAsOf={live.data?.weatherAsOf ?? null}
+          refreshHours={live.data?.refreshHours ?? null}
+          pendingGrids={live.data && !live.data.complete ? live.data.pendingGrids : 0}
+          loading={live.loading}
+          error={live.error}
+          missingCount={missingCount}
+        />
       )}
 
       <div className="legend-row">

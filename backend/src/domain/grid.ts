@@ -13,6 +13,11 @@ export interface GridPoint {
   ny: number;
 }
 
+// 격자 캐시·응답에서 쓰는 문자열 키 "nx,ny"
+export function gridKey(grid: GridPoint): string {
+  return `${grid.nx},${grid.ny}`;
+}
+
 // 기상청 공식 LCC(Lambert Conformal Conic) 위경도→격자 변환식.
 // 검증: 서울시청(37.5665, 126.9780) → (60, 127) — 기상청이 공개한 예시값과 일치.
 export function latLonToGrid(lat: number, lon: number): GridPoint {

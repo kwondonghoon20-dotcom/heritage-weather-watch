@@ -13,7 +13,8 @@ export interface HeritageSite {
   lng: number;
   region: string;
   sigungu?: string; // /api/sites 에서 온 시군구명
-  sigunguCode?: string; // 시군구 5자리 코드 — 실시간 응답(시군구별)에서 이 유산의 날씨를 찾는 키
+  sigunguCode?: string; // 시군구 5자리 코드 — 실시간 응답(시군구별)에서 이 유산의 산불위험·특보를 찾는 키
+  grid?: string; // 이 유산이 속한 기상청 5km 격자 "nx,ny" — 실시간 응답(격자별)에서 이 유산의 날씨를 찾는 키(/api/sites 가 붙여 준다)
   regionTag: RegionTag;
   elevationProfile: ElevationProfile;
   era?: string; // 선택: 없으면 UI에서 해당 항목을 그리지 않는다
@@ -78,8 +79,24 @@ export interface LiveSiteData extends WeatherState {
   warnings: ActiveWarning[];
 }
 
+// 격자(5km) 단위 날씨. 산불위험·특보는 시군구 단위로만 값이 나오므로 따로 내려온다(합치는 곳: hooks/useLiveWeather.ts 의 resolveLiveSite).
+export type LiveGridWeather = Omit<WeatherState, "fireIdx">;
+
+export interface LiveRegionData {
+  fireIdx: number;
+  warnings: ActiveWarning[];
+}
+
 export interface LiveApiResponse {
   updatedAt: string;
-  // 키는 시군구 5자리 코드(유산의 sigunguCode). 같은 시군구의 유산들이 값을 공유한다. null이면 그 시군구는 "데이터 없음".
-  regions: Record<string, LiveSiteData | null>;
+  // 응답에 쓰인 격자 값 중 가장 오래전에 조회한 시각. 캐시 때문에 updatedAt 보다 몇 시간 앞설 수 있다.
+  weatherAsOf: string | null;
+  refreshHours: number; // 격자 날씨를 다시 조회하는 주기(시간)
+  // false 면 서버가 이번 구간 값을 아직 다 채우지 못한 것 — 못 채운 격자는 직전 값이거나 null 이고, 곧 다시 요청하면 더 채워진다.
+  complete: boolean;
+  pendingGrids: number;
+  // 키는 유산의 grid("nx,ny"). 같은 격자의 유산들이 값을 공유한다. null이면 그 격자는 "데이터 없음".
+  grids: Record<string, LiveGridWeather | null>;
+  // 키는 시군구 5자리 코드(유산의 sigunguCode). null이면 그 시군구는 산불위험 데이터가 없다.
+  regions: Record<string, LiveRegionData | null>;
 }

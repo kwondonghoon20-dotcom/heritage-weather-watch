@@ -19,9 +19,13 @@ interface SitesApiResponse {
 // 실패하면 요청을 비워서 retry() 나 다음 마운트 때 다시 시도할 수 있게 한다.
 let inflight: Promise<HeritageSite[]> | null = null;
 
+// 카탈로그 응답은 브라우저·CDN에 오래 캐시된다(max-age=300, stale-while-revalidate=86400 — 옛 값을 먼저 주고 뒤에서 갱신). 응답 모양이 바뀌면
+// 이 버전을 올려 캐시를 분리할 것: 안 그러면 재방문자가 옛 카탈로그(예: v2 이전에는 유산의 grid 필드가 없음)로 새 화면을 그려 실시간 값이 전부 "데이터 없음"이 된다.
+const SITES_URL = "/api/sites?v=2";
+
 export function loadSiteCatalog(): Promise<HeritageSite[]> {
   if (!inflight) {
-    inflight = fetch("/api/sites")
+    inflight = fetch(SITES_URL)
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json() as Promise<SitesApiResponse>;

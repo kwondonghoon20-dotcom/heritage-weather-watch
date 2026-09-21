@@ -17,10 +17,12 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     return;
   }
   try {
-    const data = await getLiveData();
+    const { data, cacheControl } = await getLiveData();
     res.setHeader("Content-Type", "application/json; charset=utf-8");
-    // CDN에서 10분간 공유 캐시해 함수 호출과 기상청 호출을 줄인다(기상청 일일 한도 10,000건 보호). 백그라운드 갱신은 30분까지 허용.
-    res.setHeader("Cache-Control", "public, s-maxage=600, stale-while-revalidate=1800");
+    // CDN 캐시를 서버의 날씨 캐시 구간(기본 3시간)에 맞춘다: 전부 이번 구간 값이면 구간 끝까지(최대 3시간) 캐시하고, 만료 뒤에도 1시간은
+    // 직전 값을 즉시 주면서 뒤에서 갱신한다(stale-while-revalidate). 아직 다 못 채운 응답은 5~10초만 캐시해 곧 이어서 채운다.
+    // 정확한 규칙은 liveData.ts 의 liveCacheControl. 인스턴스 메모리 캐시는 서로 공유되지 않으므로 이 헤더가 함수 호출 자체를 줄이는 유일한 공유 캐시다.
+    res.setHeader("Cache-Control", cacheControl);
     res.statusCode = 200;
     res.end(JSON.stringify(data));
   } catch (err) {
