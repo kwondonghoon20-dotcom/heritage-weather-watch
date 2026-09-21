@@ -1,8 +1,11 @@
 import { FACTOR_LABEL, MATERIAL_LABEL } from "../domain/constants";
 import { adviceFor } from "../domain/advice";
-import type { FactorKey, LivePhase, ScoredSite } from "../types";
+import type { FactorKey, HeritageSite, LivePhase, ScoredSite } from "../types";
 
 const FACTOR_ORDER: FactorKey[] = ["rain", "wind", "freeze", "fire", "humidity"];
+
+// era·desc 는 선택 필드라 비어 있을 수 있다 — 없는 항목은 구분자("·")까지 함께 건너뛴다.
+const metaLine = (site: HeritageSite) => [site.region, site.era, site.heritageType, MATERIAL_LABEL[site.material]].filter(Boolean).join(" · ");
 
 interface Props {
   scored: ScoredSite | null;
@@ -49,10 +52,10 @@ export function SidePanel({ scored, phase }: Props) {
       <aside className="detail-panel">
         <h3 className="detail-name">{site.name}</h3>
         <div className="detail-meta">
-          {site.region} · {site.era} · {site.heritageType} · {MATERIAL_LABEL[site.material]}
+          {metaLine(site)}
         </div>
         <p className="detail-empty">❓ 실시간 기상·산불위험 데이터를 아직 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.</p>
-        <p className="desc">{site.desc}</p>
+        {site.desc && <p className="desc">{site.desc}</p>}
       </aside>
     );
   }
@@ -63,7 +66,7 @@ export function SidePanel({ scored, phase }: Props) {
     <aside className="detail-panel">
       <h3 className="detail-name">{site.name}</h3>
       <div className="detail-meta">
-        {site.region} · {site.era} · {site.heritageType} · {MATERIAL_LABEL[site.material]}
+        {metaLine(site)}
       </div>
       <span className="detail-badge" style={{ background: score.level.tint, color: score.level.color }}>
         {score.level.label} · {score.total.toFixed(0)}점
@@ -103,7 +106,7 @@ export function SidePanel({ scored, phase }: Props) {
         <div className="h">권장 조치</div>
         {advice}
       </div>
-      <p className="desc">{site.desc}</p>
+      {site.desc && <p className="desc">{site.desc}</p>}
     </aside>
   );
 }

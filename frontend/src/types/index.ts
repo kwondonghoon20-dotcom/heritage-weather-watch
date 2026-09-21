@@ -12,12 +12,13 @@ export interface HeritageSite {
   lat: number;
   lng: number;
   region: string;
+  sigungu?: string; // /api/sites 에서 온 시군구명 (mock 16곳에는 없음)
   regionTag: RegionTag;
   elevationProfile: ElevationProfile;
-  era: string;
+  era?: string; // 선택: 없으면 UI에서 해당 항목을 그리지 않는다
   material: MaterialKey;
   heritageType: string;
-  desc: string;
+  desc?: string; // 선택: 없으면 UI에서 설명 줄을 그리지 않는다
 }
 
 export interface WeatherState {

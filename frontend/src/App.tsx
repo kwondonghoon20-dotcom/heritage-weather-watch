@@ -5,6 +5,7 @@ import { ScenarioControls } from "./components/ScenarioControls";
 import { ModeToggle } from "./components/ModeToggle";
 import { LiveStatusBar } from "./components/LiveStatusBar";
 import { SCENARIOS } from "./domain/constants";
+import { LIVE_KEY_BY_SITE_ID } from "./domain/liveSites";
 import { scoreSite } from "./domain/scoring";
 import { useHeritageData } from "./hooks/useHeritageData";
 import { useLiveWeather } from "./hooks/useLiveWeather";
@@ -36,34 +37,45 @@ function loadState(): PersistedState {
 }
 
 export default function App() {
-  const { sites } = useHeritageData();
+  const { sites: allSites, source, status: catalogStatus } = useHeritageData();
   const [{ mode, weather, scenarioKey, selectedId }, setState] = useState<PersistedState>(loadState);
   const live = useLiveWeather(mode === "live");
 
+  // 시나리오 모드는 카탈로그 전체, 실시간 모드는 실시간 데이터가 있는 유산만(현재 기존 16곳 — 2단계에서 전체로 확대).
+  const sites = useMemo(() => (mode === "live" ? allSites.filter((s) => LIVE_KEY_BY_SITE_ID[s.id]) : allSites), [allSites, mode]);
+
+  // 저장돼 있던 선택 유산이 지금 목록에 없으면(예: 예전 id 형식) 오류 없이 선택을 비운다. 목록을 받는 중에는 판단하지 않는다.
+  // 화면 표시와 저장 모두 이 파생값을 쓰므로, 유효하지 않은 id 는 다음 저장 때 자연스럽게 null 로 바뀐다.
+  const validSelectedId = catalogStatus === "loading" || !selectedId || sites.some((s) => s.id === selectedId) ? selectedId : null;
+
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ mode, weather, scenarioKey, selectedId }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ mode, weather, scenarioKey, selectedId: validSelectedId }));
     } catch {
       // 저장소를 사용할 수 없는 환경에서는 조용히 무시
     }
-  }, [mode, weather, scenarioKey, selectedId]);
+  }, [mode, weather, scenarioKey, validSelectedId]);
 
   const scored: ScoredSite[] = useMemo(() => {
     if (mode === "live") {
       return sites.map((site) => {
-        const liveWeather = live.data?.sites[site.id] ?? null;
+        const liveKey = LIVE_KEY_BY_SITE_ID[site.id];
+        const liveWeather = (liveKey ? live.data?.sites[liveKey] : null) ?? null;
         return { site, score: liveWeather ? scoreSite(site, liveWeather, liveWeather.warnings ?? []) : null };
       });
     }
     return sites.map((site) => ({ site, score: scoreSite(site, weather) }));
   }, [sites, mode, weather, live.data]);
 
-  const selectedScored = scored.find((s) => s.site.id === selectedId) ?? null;
+  const selectedScored = scored.find((s) => s.site.id === validSelectedId) ?? null;
 
   const livePhase: LivePhase = mode === "live" ? (live.loading ? (live.data ? "refreshing" : "initial-loading") : "ready") : "ready";
 
   // 초기 로딩 중에는 전 유산이 아직 score:null 상태라, 이를 "데이터 없음"으로 잘못 세지 않도록 제외한다.
   const missingCount = mode === "live" && livePhase !== "initial-loading" ? scored.filter((s) => !s.score).length : 0;
+
+  const catalogNotice =
+    catalogStatus === "loading" ? "유산 목록을 불러오는 중…" : catalogStatus === "error" ? "유산 목록을 불러오지 못해 예시 16곳만 표시합니다." : null;
 
   function handleModeChange(next: ViewMode) {
     setState((prev) => ({ ...prev, mode: next }));
@@ -95,7 +107,13 @@ export default function App() {
             <p className="brand-sub">비를 맞고 바람을 맞는 유산들의 오늘 — 지도 기반 관측</p>
           </div>
         </div>
-        <span className="badge-proto">{mode === "live" ? "실시간 관측 · 기상청/국립산림과학원 API" : "프로토타입 · mock 데이터로 시뮬레이션"}</span>
+        <span className="badge-proto">
+          {mode === "live"
+            ? "실시간 관측 · 기상청/국립산림과학원 API"
+            : source === "mock"
+              ? "시뮬레이션 · 예시 유산 16곳"
+              : `시뮬레이션 · 국가지정 야외유산 ${allSites.length.toLocaleString()}건`}
+        </span>
       </header>
 
       <ModeToggle mode={mode} onChange={handleModeChange} />
@@ -109,7 +127,7 @@ export default function App() {
       <p className="legend-note">경보 4단계 — 관심(파랑) · 주의(노랑) · 경계(주황) · 심각(빨강)</p>
 
       <div className="layout">
-        <MapView scored={scored} selectedId={selectedId} phase={livePhase} onSelect={handleSelect} />
+        <MapView scored={scored} selectedId={validSelectedId} phase={livePhase} onSelect={handleSelect} notice={catalogNotice} />
         <SidePanel scored={selectedScored} phase={livePhase} />
       </div>
 
