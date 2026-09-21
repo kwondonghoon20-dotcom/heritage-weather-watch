@@ -16,9 +16,24 @@ export interface ParsedWarning extends ActiveWarning {
 }
 
 const WARNING_URL = "https://apihub.kma.go.kr/api/typ01/url/wrn_now_data.php";
-const TEN_MINUTES = 10 * 60 * 1000;
+const SUCCESS_TTL = 10 * 60 * 1000;
+// 조회에 실패한 결과는 짧게만 기억한다 — 10분씩 "특보 없음"으로 굳으면(CDN 캐시까지 겹치면 더 오래) 실제 특보가 화면에서 오래 빠진다.
+const FAILURE_TTL = 90 * 1000;
+// 허브가 간헐적으로 멈추는 일이 있어(프로덕션에서 8초 초과 확인) 오래 기다리지 않는다. /api/live 전체가 서버리스 함수 제한(10초)에 닿지 않게 하기 위함.
+const FETCH_TIMEOUT_MS = 4000;
 const CACHE_KEY = "all";
-const cache = new TtlCache<ParsedWarning[] | null>(TEN_MINUTES);
+const cache = new TtlCache<ParsedWarning[] | null>(SUCCESS_TTL);
+
+// 특보수준(LVL) 화이트리스트. 여기 있는 값만 특보로 인정하고, 그 밖의 값은 특보 없음으로 처리한다.
+// 원본은 "주의보"가 아니라 "주의"로 내려온다 — 2026-09-21에 다섯 시점·1,000여 행으로 확인한 값은 주의 / 경보 / 중대경보 / 예비뿐이다.
+//  - "예비": 예비특보(발효 예정, 아직 효력 없음) → 인정하지 않는다. (이전 코드는 "경보"가 아니면 전부 주의보로 읽어 예비특보가 주의보로 표시됐다)
+//  - "중대경보": 경보보다 높은 등급의 실제 발효 특보(폭염중대경보 등). 우리 점수 체계에는 경보가 최상위라 "경보"로 취급한다.
+const LEVEL_WHITELIST = new Map<string, WarningLevel>([
+  ["주의", "주의보"],
+  ["주의보", "주의보"],
+  ["경보", "경보"],
+  ["중대경보", "경보"],
+]);
 
 // 응답은 EUC-KR 인코딩의 콤마 구분 텍스트(#로 시작하는 줄은 설명). 실제 호출로 확인(2026-09-19):
 // REG_UP, REG_UP_KO, REG_ID, REG_KO, TM_FC, TM_EF, WRN, LVL, CMD, ED_TM
@@ -36,7 +51,10 @@ export function parseWarnings(text: string): ParsedWarning[] {
     if (!regId.startsWith("L")) continue;
     if (cmd.includes("해제")) continue;
 
-    result.push({ regId, regKo, regUpKo, regUpId, wrn, level: lvl.includes("경보") ? "경보" : "주의보" });
+    const level = LEVEL_WHITELIST.get(lvl);
+    if (!level) continue; // 예비 등 화이트리스트에 없는 수준은 특보로 보지 않는다
+
+    result.push({ regId, regKo, regUpKo, regUpId, wrn, level });
   }
   return result;
 }
@@ -45,7 +63,7 @@ async function fetchAllWarnings(): Promise<ParsedWarning[] | null> {
   const params = new URLSearchParams({ fe: "f", tm: "", disp: "0", help: "0", authKey: ENV.kmaHubApiKey });
 
   try {
-    const res = await fetch(`${WARNING_URL}?${params.toString()}`, { signal: AbortSignal.timeout(8000) });
+    const res = await fetch(`${WARNING_URL}?${params.toString()}`, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
     const buf = await res.arrayBuffer();
@@ -63,12 +81,12 @@ async function fetchAllWarnings(): Promise<ParsedWarning[] | null> {
   }
 }
 
-// 전국 특보를 10분 캐시. 실패(null)도 캐시해 실패 시 API를 반복 호출하지 않는다.
+// 전국 특보를 10분 캐시. 실패(null)도 90초간 캐시해 실패 시 API를 연달아 두들기지 않되, 오래 굳지는 않게 한다.
 async function getAllWarnings(): Promise<ParsedWarning[] | null> {
   const cached = cache.get(CACHE_KEY);
   if (cached !== undefined) return cached;
   const result = await fetchAllWarnings();
-  cache.set(CACHE_KEY, result);
+  cache.set(CACHE_KEY, result, result === null ? FAILURE_TTL : SUCCESS_TTL);
   return result;
 }
 
