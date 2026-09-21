@@ -16,7 +16,8 @@
 - `backend/` — Node.js/Express, 공공데이터 프록시·캐시 서버
   - `src/domain/grid.ts` — 기상청 LCC 위경도→격자(nx,ny) 변환
   - `src/data/heritageSites.generated.ts` — 유산 1,617곳 카탈로그(자동 생성, `scripts/heritage/build-sites.mjs`).
-    큐레이션한 16곳의 regionTag·elevationProfile·era·desc 는 `scripts/heritage/site-overrides.json`에 있다
+    큐레이션한 16곳의 regionTag·elevationProfile·era·desc 는 `scripts/heritage/site-overrides.json`에, 대표점(lat,lng) 수동 보정은
+    `scripts/heritage/coordinate-fixes.json`(현재 경주 불국사 1건)에 있다 — 원본 geojson 은 커밋하지 않아 거기를 고치면 재생성 때 되돌아가므로 보정은 이 파일에 둔다
   - `src/siteGrids.ts` — 유산이 놓인 기상청 5km 격자 741개(유산 수 순)와 결측 격자의 이웃 대체 후보
   - `src/liveRegions.ts` — 시군구 191곳과 시군구별 산불 코드(산불위험·특보가 시군구 단위로만 값을 주기 때문)
   - `src/services/kmaClient.ts` — 기상청 초단기실황(`getUltraSrtNcst`) 호출 + 격자별 캐시(시계 기준 N시간 구간), 실패 백오프, 일일 호출 상한, 개발용 디스크 캐시
@@ -110,6 +111,8 @@ npm run dev
 - **Vercel 인스턴스 캐시는 공유되지 않는다**: 격자 캐시는 함수 인스턴스의 메모리에 있어서 콜드스타트나 인스턴스가 늘 때마다 비어 있다. 그때마다
   최대 741건이 다시 나가므로 하루 5,928건이라는 계산은 "인스턴스가 하나이고 계속 살아 있을 때"의 값이다. CDN 캐시 헤더(위)가 함수 호출 자체를 줄여
   완화하지만 상한을 보장하지는 않는다 — `KMA_DAILY_CALL_LIMIT`도 인스턴스별로 센다. 여러 인스턴스에서도 확실히 지키려면 공유 저장소(KV·Blob 등)가 필요하다.
+- **큰 사적의 대표점**: 카탈로그 좌표는 원본 폴리곤의 한가운데(polylabel)라서, 면적이 큰 사적은 실제 건물군과 어긋날 수 있다. 사적 "경주 불국사"(39.9만㎡)는 경내가 아니라
+  토함산 산림에 찍혀 석굴암과 472m였고, 2026-09-22에 경내(대웅전) 좌표로 보정했다. 면적 10만㎡ 이상 182건(30만㎡ 이상 83건)은 같은 문제가 있을 수 있으나 아직 점검하지 않았다.
 - **시군구가 없는 유산 1건**(포항 여강이씨 달전재사)은 격자 날씨는 있지만 산불위험(시군구 단위)을 알 수 없어 "데이터 없음"으로 표시된다.
 - **옛 화면이 열려 있는 탭**: 배포 전에 로드된 프런트는 옛 `/api/live` 응답 모양(시군구별 값)을 기대하므로 배포 뒤 새로고침하기 전까지 값이 깨진다.
 

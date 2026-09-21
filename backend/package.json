@@ -10,7 +10,7 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "test": "tsx --test src/services/warningClient.test.ts src/liveData.test.ts"
+    "test": "tsx --test src/services/warningClient.test.ts src/liveData.test.ts src/catalog.test.ts"
   },
   "keywords": [],
   "author": "",
