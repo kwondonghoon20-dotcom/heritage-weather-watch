@@ -1,5 +1,6 @@
 import { ENV } from "../config/env";
 import { TtlCache } from "../cache/ttlCache";
+import { metroZoneIds, unknownMetroZoneIds } from "./warningZones";
 
 export type WarningLevel = "주의보" | "경보";
 
@@ -74,7 +75,9 @@ async function fetchAllWarnings(): Promise<ParsedWarning[] | null> {
       const json = JSON.parse(text);
       throw new Error(json?.result?.message ?? `status ${json?.result?.status}`);
     }
-    return parseWarnings(text);
+    const parsed = parseWarnings(text);
+    warnUnknownMetroZones(parsed);
+    return parsed;
   } catch (err) {
     console.error("[warningClient] 특보 조회 실패:", err instanceof Error ? err.message : err);
     return null;
@@ -92,15 +95,17 @@ async function getAllWarnings(): Promise<ParsedWarning[] | null> {
 
 // 특보 구역(REG_ID)은 시·군 단위가 기본이지만 경주시남부·안동시북부처럼 시 안에서 쪼개지기도 하고, 서울(4개 권역)·광역시는
 // 구가 아니라 도시 전체(또는 동부/서부 권역) 단위다. 그래서 유산의 (시도, 시군구명)을 다음 규칙으로 특보 구역에 맞춘다.
+//  0) 서울·부산·울산·광주(전남광주)의 구·군: warningZones.ts 소속표로 그 구가 속한 특보구역(+도시 전체 구역)만 본다. 구역 ID로 맞춘다.
+//     (2026-07-29 실제 응답: 서울은 동남·동북·서남권 폭염경보, 서북권만 폭염주의였다 — 종로구는 서북권 것만 받는다.)
 //  1) 시도: 구역의 상위코드(REG_UP) 앞 4자로 판별 — 이름 비교보다 정확하다. 실제 응답 228개 구역으로 확인(2026-09-21):
 //     L101 경기 · L102 강원 · L103 충남 · L104 충북 · L105 전남 · L106 전북 · L107 경북 · L108 경남 · L109 제주
 //     L110 서울 · L111 인천 · L112 대전 · L113 광주 · L114 대구 · L115 부산 · L116 울산 · L117 세종
 //     (이름이 같은 강원 고성군/경남 고성군, 경기 광주시/광주광역시가 섞이지 않게 하는 핵심)
-//  2) 광역시의 "구"(종로구 등)와 세종: 그 광역시의 구역 전체. 단 대구 달성군·인천 강화군처럼 자기 구역이 있는 "군"은 구역명으로 맞춘다.
-//     [알려진 한계] 서울은 특보가 4개 권역(동남·동북·서남·서북)으로 나뉘는데 구→권역 매핑이 없어, 어느 권역의 특보든 서울의 모든 구가
-//     받는다. 특보가 일부 권역에만 걸리는 날에는 다른 권역의 구(예: 종로구)에 과다하게 표시될 수 있다. 다른 광역시도 동부/서부 권역이
-//     있으면 같은 한계가 있다. (2026-09-21 결정: 이번엔 고치지 않고 한계로 남긴다 — README "알려진 한계" 참고)
+//  2) 소속표에 없는 광역시의 "구"와 세종: 그 광역시의 구역 전체. 단 대구 달성군·인천 강화군처럼 자기 구역이 있는 "군"은 구역명으로 맞춘다.
+//     [알려진 한계] 인천(구 이름이 개편돼 소속을 정하지 않음)·세종·대구 달성군은 구역 합집합이라, 일부 구역에만 걸린 특보도 그 도시 전체가 받는다.
 //  3) 그 밖의 시·군: 구역명이 "경주"로 시작하는 구역 전부(경주시남부·경주시동부…, 함양중부·보령도서 같은 줄임 표기 포함).
+//     [알려진 한계] 시 안에서 쪼개진 구역(경주·안동·합천·해남·제주 등, 카탈로그 유산 약 360곳)은 일부 구역에만 걸린 특보도 시 전체가 받는다.
+//     읍·면·동 단위로 갈려 이름 표로는 풀 수 없다 — 특보구역 경계(GIS) 데이터로 유산 좌표를 구역에 배정해야 한다(별도 과제, README 참고).
 const PROVINCE_BY_UPID: Record<string, string> = {
   L101: "경기", L102: "강원", L103: "충남", L104: "충북", L105: "전남", L106: "전북", L107: "경북", L108: "경남", L109: "제주",
   L110: "서울", L111: "인천", L112: "대전", L113: "광주", L114: "대구", L115: "부산", L116: "울산", L117: "세종",
@@ -113,6 +118,15 @@ const PROVINCES_OF_REGION: Record<string, string[]> = {
 };
 const METRO_PROVINCES = new Set(["서울", "부산", "대구", "인천", "대전", "울산", "세종", "광주"]);
 
+// 소속표(warningZones.ts)가 다루는 광역시에서 표에 없는 구역 ID가 응답에 나오면 한 번만 알린다 — 기상청이 구역을 다시 나눴다는 신호일 수 있다.
+const warnedUnknownZones = new Set<string>();
+function warnUnknownMetroZones(all: ParsedWarning[]): void {
+  const unknown = unknownMetroZoneIds(all.map((w) => ({ regId: w.regId, province: PROVINCE_BY_UPID[w.regUpId.slice(0, 4)] }))).filter((id) => !warnedUnknownZones.has(id));
+  if (unknown.length === 0) return;
+  for (const id of unknown) warnedUnknownZones.add(id);
+  console.warn(`[warningClient] 소속표(warningZones.ts)에 없는 광역시 특보구역 ID: ${unknown.join(", ")} — 기상청이 구역을 다시 나눴을 수 있으니 표를 확인하세요.`);
+}
+
 export function matchRegionWarnings(all: ParsedWarning[], region: string, sigungu: string): ActiveWarning[] {
   const provinces = PROVINCES_OF_REGION[region];
   if (!provinces) return [];
@@ -123,7 +137,10 @@ export function matchRegionWarnings(all: ParsedWarning[], region: string, sigung
   const metroWide = (metros: string[]) => inProvince.filter((w) => metros.includes(provinceOf(w)) && !/군/.test(w.regKo));
 
   let zones: ParsedWarning[];
-  if (/구$/.test(sigungu) || region === "세종") {
+  const tableZoneIds = metroZoneIds(region, sigungu);
+  if (tableZoneIds) {
+    zones = all.filter((w) => tableZoneIds.has(w.regId));
+  } else if (/구$/.test(sigungu) || region === "세종") {
     zones = metroWide(region === "전남광주" ? ["광주"] : provinces);
   } else {
     const core = sigungu.replace(/(시|군)$/, "");
