@@ -1,4 +1,5 @@
-export type MaterialKey = "wood" | "stone" | "wall" | "mound" | "dolmen";
+// site(유적지)·modern(근대건축)은 heritage-classified.geojson 의 _material 값과 같은 키를 쓴다.
+export type MaterialKey = "wood" | "stone" | "wall" | "mound" | "dolmen" | "site" | "modern";
 export type RegionTag = "mountain" | "coast" | "river" | "urban" | "plain";
 // 지형 위치에 따른 강수 피해 취약도: 침수 위험 저지대 / 평지 / 산기슭·구릉 / 능선·고지
 export type ElevationProfile = "flood-prone" | "plain" | "hillside" | "ridge";

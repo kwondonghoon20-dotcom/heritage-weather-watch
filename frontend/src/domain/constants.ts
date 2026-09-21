@@ -7,6 +7,8 @@ export const MATERIAL_LABEL: Record<MaterialKey, string> = {
   wall: "성곽",
   mound: "봉분(흙)",
   dolmen: "고인돌",
+  site: "유적지",
+  modern: "근대건축",
 };
 
 export const MATERIAL_WEIGHTS: Record<MaterialKey, Record<FactorKey, number>> = {
@@ -15,6 +17,9 @@ export const MATERIAL_WEIGHTS: Record<MaterialKey, Record<FactorKey, number>> = 
   wall: { rain: 0.75, wind: 0.25, freeze: 0.55, fire: 0.05, humidity: 0.2 },
   mound: { rain: 0.9, wind: 0.2, freeze: 0.4, fire: 0.1, humidity: 0.35 },
   dolmen: { rain: 0.25, wind: 0.1, freeze: 0.8, fire: 0.05, humidity: 0.1 },
+  // 유적지: 서 있는 구조물이 없는 터·유구 — 강우 침식에 가장 민감. 근대건축: 벽돌·조적·콘크리트 건물. (초기값, 추후 조정 대상)
+  site: { rain: 0.85, wind: 0.05, freeze: 0.45, fire: 0.05, humidity: 0.25 },
+  modern: { rain: 0.4, wind: 0.3, freeze: 0.5, fire: 0.2, humidity: 0.3 },
 };
 
 export const REGION_MOD: Record<string, Partial<Record<FactorKey, number>>> = {
