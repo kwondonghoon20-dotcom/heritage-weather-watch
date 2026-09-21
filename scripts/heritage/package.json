@@ -8,7 +8,8 @@
     "convert": "node convert.mjs",
     "merge": "node merge-duplicates.mjs",
     "filter-outdoor": "node filter-outdoor.mjs",
-    "classify-materials": "node classify-materials.mjs"
+    "classify-materials": "node classify-materials.mjs",
+    "build-sites": "node build-sites.mjs"
   },
   "engines": {
     "node": ">=22"
