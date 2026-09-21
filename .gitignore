@@ -17,3 +17,5 @@ build/
 data/raw/
 data/heritage-full.geojson
 data/heritage-merged.geojson
+data/heritage-outdoor.geojson
+data/heritage-classified.geojson

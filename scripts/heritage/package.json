@@ -6,7 +6,9 @@
   "scripts": {
     "download": "node download.mjs",
     "convert": "node convert.mjs",
-    "merge": "node merge-duplicates.mjs"
+    "merge": "node merge-duplicates.mjs",
+    "filter-outdoor": "node filter-outdoor.mjs",
+    "classify-materials": "node classify-materials.mjs"
   },
   "engines": {
     "node": ">=22"
