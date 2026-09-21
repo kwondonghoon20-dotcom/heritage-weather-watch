@@ -1,9 +1,24 @@
-import { MapContainer, TileLayer } from "react-leaflet";
+import { useEffect } from "react";
+import { MapContainer, TileLayer, useMap } from "react-leaflet";
 import type { LivePhase, ScoredSite } from "../types";
 import { ClusterLayer } from "./ClusterLayer";
 import { SummaryPanel } from "./SummaryPanel";
 
 const KOREA_CENTER: [number, number] = [36.2, 127.8];
+
+// 유산의 지형 분류(고도 기반 elevationProfile·산악 판정)에 쓴 표고 데이터의 출처. Open-Meteo 무료 API는 CC BY 4.0 표기가 필요하다.
+// 타일 출처(OpenStreetMap)와는 성격이 달라 TileLayer 가 아니라 지도의 표기줄에 따로 더한다.
+const DATA_ATTRIBUTION = '고도 데이터: <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a>';
+function DataAttribution() {
+  const map = useMap();
+  useEffect(() => {
+    map.attributionControl.addAttribution(DATA_ATTRIBUTION);
+    return () => {
+      map.attributionControl.removeAttribution(DATA_ATTRIBUTION);
+    };
+  }, [map]);
+  return null;
+}
 
 interface Props {
   scored: ScoredSite[];
@@ -23,6 +38,7 @@ export function MapView({ scored, selectedId, phase, onSelect, notice, onRetry }
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
+        <DataAttribution />
         <ClusterLayer scored={scored} selectedId={selectedId} phase={phase} onSelect={onSelect} />
       </MapContainer>
       {notice && (

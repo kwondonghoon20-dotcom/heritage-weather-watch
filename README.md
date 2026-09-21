@@ -26,6 +26,8 @@
   - `src/services/warningZones.ts` — 서울·부산·울산·광주의 구·군 → 특보구역 ID 소속표(출처 URL·확인일은 파일 상단 주석)
   - `src/liveData.ts` — `/api/live` 조립(격자 조회 + 응답 제한 시간 + 결측 대체) 및 CDN `Cache-Control` 계산
   - `src/routes/live.ts`, `sites.ts` — `GET /api/live`(격자별 날씨 `grids` + 시군구별 산불·특보 `regions`), `GET /api/sites`(유산 카탈로그, 유산마다 자기 격자 키 `grid` 포함)
+- `scripts/heritage/` — 유산 카탈로그 생성 파이프라인(원본 다운로드 → geojson → `build-sites.mjs`)과 지형 분류 도구:
+  `fetch-elevation.mjs`(표고), `fetch-water.mjs`(하천·해안), `terrain-rules.mjs`(규칙), `terrain-report.mjs`(점검) — 아래 "지형 분류" 참고
 - `docs/` — API 필드 매핑 메모
 
 ## 현재 진행 상태
@@ -96,7 +98,50 @@ npm run dev
   그 밖의 값은 특보 없음으로 처리한다(원본은 "주의보"가 아니라 "주의"로 내려온다). 특보 조회 시간 제한은 4초, 실패 결과는 90초만 캐시한다. 회귀 테스트: `cd backend && npm test`.
 - **호출량 보호**: 하루 호출 수가 `KMA_DAILY_CALL_LIMIT`(기본 8,000)에 닿으면 조회를 멈추고 직전 값으로 응답한다(개발 서버에서는 재시작해도 카운터를 이어받는다).
 
+## 지형 분류 (자동 추정)
+
+> **유산의 지형 보정값(`regionTag` 산악/해안/하천/도심/평지, `elevationProfile` 저지대/평지/구릉/능선)은 자동 추정이며 100% 정확하지 않다.**
+> GIS 정밀 데이터 없이 표고와 VWorld 레이어로 어림한 값이라 틀리는 유산이 있다. 큐레이션한 16곳(`site-overrides.json`)은 지정값을 그대로 쓴다.
+
+카탈로그를 만들 때 한 번 계산하는 빌드타임 작업이다(서버가 실시간으로 호출하지 않는다).
+
+**데이터**
+- 표고: [Open-Meteo Elevation API](https://open-meteo.com/en/docs/elevation-api)(Copernicus GLO-90, 90m). 무료는 **비상업 전용**이고 CC BY 4.0 표기가 필요하다 → 지도 하단 "고도 데이터: Open-Meteo".
+  유산마다 9점(중심 + 반경 500m 8방향)을 받는다. VWorld에는 지금 쓸 수 있는 표고 API가 없다(옛 3D DEM 타일 서버는 2019년 폐쇄 공지 이후 모든 요청이 오류).
+- 하천: VWorld 2D 데이터 API `LT_C_WKMSTRM`(하천망)에서 반경 400m 안에 **국가하천**이 있는가(지방하천까지 넣으면 첨성대의 남천 같은 작은 하천이 걸린다).
+- 해안: VWorld `LT_L_TOISDEPCNTAH`(해안선) ∪ `LT_C_WGISPL2{CON,ABS,USE,SPA}`(관리·보전·이용·특수 연안해역) 중 하나라도 반경 4km 안에 있는가.
+  해안선은 강화도에, 연안해역은 동해 감포·호미곶과 서천 장항에 빈 구간이 있어 합집합으로 본다(서·남·동해안 9곳 확인).
+- VWorld 키(`VWORLD_API_KEY`)는 **키에 등록된 서비스 도메인**(`VWORLD_DOMAIN`, 기본 `heritage-weather-watch-five.vercel.app`)과 함께 보내야 한다. 아니면 `INCORRECT_KEY`.
+  호출 한도는 문서에서 확인하지 못했다(하천·해안 약 1만 호출을 92초에 받는 동안 제한은 없었다).
+
+**규칙**(`terrain-rules.mjs`, 국소 고저차 = 9점의 최댓값 − 최솟값)
+
+| 항목 | 규칙 |
+|---|---|
+| `regionTag` | 중심 고도 ≥ 200m → 산악 → 4km 안 바다 → 해안 → 도심(서울 전 구·광역시의 구·대도시 목록) → 400m 안 국가하천 → 하천 → 그 외 평지 (앞에서부터 처음 맞는 것) |
+| `elevationProfile` | 고저차 < 90m → (국가하천 400m 안이면 저지대, 아니면 평지) / 고저차 ≥ 90m → (고도 ≥ 450m면 능선, 아니면 구릉) |
+
+**검증(큐레이션 16곳)**: `regionTag` 16/16, `elevationProfile` 14/16. 틀리는 곳은 부석사(구릉인데 능선으로)와 강화 부근리 지석묘(구릉인데 DEM상 평탄해 평지로)다.
+`node scripts/heritage/terrain-report.mjs check16`으로 다시 볼 수 있다. 이 숫자를 곧이곧대로 믿으면 안 되는 이유:
+- 16곳은 옛 mock의 **주관적 지정값**이라 정답이 아니다. 표본이 적어 규칙은 "최선의 근사치"로 채택했을 뿐이다(추가 라벨링은 하지 않기로 했다).
+- 구릉/능선 경계(450m)는 16곳으로 정해지지 않는다(246~452m 어디든 같은 결과) — 판단값이다. 평지/구릉 경계(90m)는 창덕궁(86m)과 공산성(101m) 사이라 여유가 얇다.
+- 산악 기준은 처음 300m로 잡았다가, 불국사 좌표 보정(559m → 246m) 뒤 재검증에서 200m로 낮췄다(16곳에서 성립하는 구간은 93~246m).
+- 90m 해상도 DEM이라 좁은 지형(성곽 능선, 하천 제방)은 뭉개진다. 해안·하천 판정은 정사각형 범위(4km, 400m) 근사이며, 도심 목록은 시군구명 매칭이라 시골 구(區)도 도심으로 잡을 수 있다.
+
+**실행**(`scripts/heritage/`에서 `npm run …` 또는 `node …`)
+```bash
+node scripts/heritage/fetch-elevation.mjs      # Open-Meteo 표고 — 이어받기 가능, 시간당·일일 한도를 지켜 끊어 받는다
+node scripts/heritage/fetch-water.mjs          # VWorld 하천·해안 — 이어받기 가능
+node scripts/heritage/terrain-report.mjs check16 | coverage | preview | top-relief
+node scripts/heritage/build-sites.mjs --terrain   # 캐시가 전 유산에 채워졌을 때만 카탈로그에 적용(일부만 적용하지 않는다)
+```
+- Open-Meteo는 다중 좌표를 **좌표 수만큼** 센다(분당 600·시간당 5,000·일 10,000). 전체 14,553점은 하루에 못 받아 최소 이틀이 걸린다(2026-09-22: 5,049점에서 시간당 한도 429).
+  캐시(`elevation-cache.json`, `water-cache.json`)는 커밋하며, 좌표가 바뀐 유산은 자동으로 다시 받는다.
+- **현재 상태**: 표고 561/1,617곳(큐레이션 16 + 면적 10만㎡ 이상 182 + 일부), 하천·해안 1,617/1,617곳. 카탈로그에는 아직 적용하지 않았다(`--terrain`은 표고 캐시가 전부 찬 뒤).
+
 ## 알려진 한계
+
+- **지형 보정은 자동 추정이다**(위 "지형 분류"): 큐레이션 16곳 외 유산의 `regionTag`/`elevationProfile`은 표고·VWorld 레이어로 어림한 값이며 틀릴 수 있다.
 
 - **특보가 도시 전체에 과다 표시되는 곳** — 특보구역이 시군구보다 잘게 나뉘는데 유산이 어느 구역에 있는지 정할 수 없는 곳은, 일부 구역에만 걸린 특보도
   그 도시 전체의 유산이 받는다:
