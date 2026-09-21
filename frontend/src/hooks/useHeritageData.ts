@@ -1,24 +1,21 @@
 import { useMemo } from "react";
-import { SITES as MOCK_SITES } from "../data/sites.mock";
 import type { HeritageSite } from "../types";
 import { useSiteCatalog } from "./useSiteCatalog";
 
 export interface HeritageDataResult {
   sites: HeritageSite[];
-  // api: 백엔드 카탈로그(/api/sites) / mock: 카탈로그를 못 받아 예시 16곳으로 대체
-  source: "api" | "mock";
   status: "loading" | "ready" | "error";
+  retry: () => void;
 }
 
 const EMPTY: HeritageSite[] = [];
 
-// 유산 목록의 유일한 진입점. 앱 시작 시 받아 둔 카탈로그를 시나리오·실시간 모드가 함께 쓴다.
-// 카탈로그 요청이 실패하면 예시 16곳(sites.mock.ts)으로 대체해 앱이 빈 화면이 되지 않게 한다.
+// 유산 목록의 유일한 진입점. 백엔드 카탈로그(/api/sites)를 앱 시작 시 1회 받아 시나리오·실시간 모드가 함께 쓴다.
+// 대체 데이터는 두지 않는다 — 요청이 실패하면 빈 목록과 error 상태를 돌려주고, 화면이 안내와 다시 시도 버튼을 보여준다.
 export function useHeritageData(): HeritageDataResult {
   const catalog = useSiteCatalog();
-  return useMemo(() => {
-    if (catalog.status === "ready") return { sites: catalog.sites, source: "api", status: "ready" };
-    if (catalog.status === "error") return { sites: MOCK_SITES, source: "mock", status: "error" };
-    return { sites: EMPTY, source: "api", status: "loading" };
-  }, [catalog]);
+  return useMemo(
+    () => ({ sites: catalog.status === "ready" ? catalog.sites : EMPTY, status: catalog.status, retry: catalog.retry }),
+    [catalog.status, catalog.sites, catalog.retry],
+  );
 }

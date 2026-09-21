@@ -481,6 +481,50 @@ button {
   margin: 0 0 6px;
 }
 
+/* 재질 필터 */
+.legend-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin: 0 0 10px;
+}
+.legend-row .legend-note {
+  margin: 0;
+}
+.material-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.material-filter select {
+  padding: 5px 28px 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+.material-filter select:disabled {
+  opacity: 0.55;
+}
+.material-filter-note {
+  font-size: 12.5px;
+}
+.link-btn {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 /* 클러스터 마커: 묶음 안 가장 높은 경보 단계의 색 + 유산 수 */
 .heritage-cluster {
   background: transparent;
@@ -514,4 +558,8 @@ button {
   font-size: 12.5px;
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.15);
   pointer-events: none;
+}
+.map-notice .link-btn {
+  margin-left: 8px;
+  pointer-events: auto;
 }

@@ -9,13 +9,14 @@
 - `legacy/` — 원본 목록형 프로토타입 (계산 로직 원본 참조용, 보존)
 - `frontend/` — Vite + React + TypeScript + Leaflet 지도 앱
   - `src/domain/` — 이식된 계산 로직 (`scoring.ts`, `advice.ts`, `constants.ts`) — 실시간/시뮬레이션 모드 공용, 수정 없음
-  - `src/data/sites.mock.ts` — 예시 유산 16곳. 카탈로그(`/api/sites`)를 못 받았을 때의 대체 데이터이자 `build-sites.mjs`가 regionTag 등을 읽는 원본
-  - `src/hooks/useSiteCatalog.ts`, `useHeritageData.ts` — 앱 시작 시 `/api/sites`(유산 1,617곳)를 1회 받아 시나리오·실시간 모드가 함께 쓴다
+  - `src/hooks/useSiteCatalog.ts`, `useHeritageData.ts` — 앱 시작 시 `/api/sites`(유산 1,617곳)를 1회 받아 시나리오·실시간 모드가 함께 쓴다.
+    이 카탈로그가 유산 목록의 유일한 출처이며 대체 데이터는 없다(실패하면 안내와 "다시 시도" 버튼을 보여준다)
   - `src/hooks/useLiveWeather.ts` — 백엔드 `/api/live` 폴링(5분 주기) 훅
-  - `src/components/` — MapView, ClusterLayer(leaflet.markercluster), SidePanel, ScenarioControls, ModeToggle, LiveStatusBar, SummaryPanel
+  - `src/components/` — MapView, ClusterLayer(leaflet.markercluster), SidePanel, ScenarioControls, ModeToggle, LiveStatusBar, SummaryPanel, MaterialFilter(재질 7종 필터)
 - `backend/` — Node.js/Express, 공공데이터 프록시·캐시 서버
   - `src/domain/grid.ts` — 기상청 LCC 위경도→격자(nx,ny) 변환
-  - `src/data/heritageSites.generated.ts` — 유산 1,617곳 카탈로그(자동 생성, `scripts/heritage/build-sites.mjs`)
+  - `src/data/heritageSites.generated.ts` — 유산 1,617곳 카탈로그(자동 생성, `scripts/heritage/build-sites.mjs`).
+    큐레이션한 16곳의 regionTag·elevationProfile·era·desc 는 `scripts/heritage/site-overrides.json`에 있다
   - `src/liveRegions.ts` — 시군구 191곳과 시군구별 대표 격자·산불 코드
   - `src/services/kmaClient.ts` — 기상청 초단기실황(`getUltraSrtNcst`) 호출 + 발표 시각 기준 캐시(최대 1시간), 일일 호출 상한
   - `src/services/forestFireClient.ts` — 국립산림과학원 산불위험예보(시군구) 호출 + 30분 캐시
@@ -27,7 +28,7 @@
 
 **Phase 1 (mock 지도 UI)** 및 **Phase 2 (실시간 데이터 연동)** 완료.
 
-- 시나리오 시뮬레이션 모드: mock 프리셋/슬라이더 기반 (Phase 1)
+- 시나리오 시뮬레이션 모드: 프리셋/슬라이더로 정한 가상 기상값 기반 (Phase 1)
 - 실시간 관측 모드: 기상청 초단기실황 + 국립산림과학원 산불위험예보 실제 API 연동 (Phase 2)
 - 두 모드 모두 상단 토글로 전환, 동일한 `domain/scoring.ts` 계산 로직 사용
 
@@ -84,5 +85,5 @@ npm run dev
 
 ## 다음 단계
 
-1. 국가유산청 공간정보 Open API 연동(현재 mock 좌표/재질을 대체)
+1. 국가유산청 공간정보 Open API 연동(현재는 gis-heritage.go.kr 공간정보를 가공한 정적 카탈로그 사용)
 2. 배포 시 프런트 정적 파일을 백엔드에서 함께 서빙하거나 리버스 프록시 구성

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { HeritageSite } from "../types";
 
 export type CatalogStatus = "loading" | "ready" | "error";
@@ -16,7 +16,7 @@ interface SitesApiResponse {
 
 // 유산 목록(GET /api/sites)은 배포 단위로만 바뀌는 정적 데이터라 앱 시작 시 한 번만 받아 재사용한다.
 // 진행 중이거나 성공한 요청은 모듈 변수로 공유해서, 컴포넌트가 다시 마운트돼도 중복 호출하지 않는다.
-// 실패하면 요청을 비워서 다음 마운트 때 다시 시도할 수 있게 한다.
+// 실패하면 요청을 비워서 retry() 나 다음 마운트 때 다시 시도할 수 있게 한다.
 let inflight: Promise<HeritageSite[]> | null = null;
 
 export function loadSiteCatalog(): Promise<HeritageSite[]> {
@@ -38,8 +38,9 @@ export function loadSiteCatalog(): Promise<HeritageSite[]> {
   return inflight;
 }
 
-export function useSiteCatalog(): SiteCatalogState {
+export function useSiteCatalog(): SiteCatalogState & { retry: () => void } {
   const [state, setState] = useState<SiteCatalogState>({ status: "loading", sites: [], error: null });
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -53,7 +54,12 @@ export function useSiteCatalog(): SiteCatalogState {
     return () => {
       cancelled = true;
     };
+  }, [attempt]);
+
+  const retry = useCallback(() => {
+    setState({ status: "loading", sites: [], error: null });
+    setAttempt((a) => a + 1);
   }, []);
 
-  return state;
+  return { ...state, retry };
 }
