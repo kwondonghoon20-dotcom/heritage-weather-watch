@@ -12,7 +12,8 @@ export interface HeritageSite {
   lat: number;
   lng: number;
   region: string;
-  sigungu?: string; // /api/sites 에서 온 시군구명 (mock 16곳에는 없음)
+  sigungu?: string; // /api/sites 에서 온 시군구명
+  sigunguCode?: string; // 시군구 5자리 코드 — 실시간 응답(시군구별)에서 이 유산의 날씨를 찾는 키
   regionTag: RegionTag;
   elevationProfile: ElevationProfile;
   era?: string; // 선택: 없으면 UI에서 해당 항목을 그리지 않는다
@@ -79,5 +80,6 @@ export interface LiveSiteData extends WeatherState {
 
 export interface LiveApiResponse {
   updatedAt: string;
-  sites: Record<string, LiveSiteData | null>;
+  // 키는 시군구 5자리 코드(유산의 sigunguCode). 같은 시군구의 유산들이 값을 공유한다. null이면 그 시군구는 "데이터 없음".
+  regions: Record<string, LiveSiteData | null>;
 }

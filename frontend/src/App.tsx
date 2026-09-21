@@ -5,7 +5,6 @@ import { ScenarioControls } from "./components/ScenarioControls";
 import { ModeToggle } from "./components/ModeToggle";
 import { LiveStatusBar } from "./components/LiveStatusBar";
 import { SCENARIOS } from "./domain/constants";
-import { LIVE_KEY_BY_SITE_ID } from "./domain/liveSites";
 import { scoreSite } from "./domain/scoring";
 import { useHeritageData } from "./hooks/useHeritageData";
 import { useLiveWeather } from "./hooks/useLiveWeather";
@@ -41,8 +40,8 @@ export default function App() {
   const [{ mode, weather, scenarioKey, selectedId }, setState] = useState<PersistedState>(loadState);
   const live = useLiveWeather(mode === "live");
 
-  // 시나리오 모드는 카탈로그 전체, 실시간 모드는 실시간 데이터가 있는 유산만(현재 기존 16곳 — 2단계에서 전체로 확대).
-  const sites = useMemo(() => (mode === "live" ? allSites.filter((s) => LIVE_KEY_BY_SITE_ID[s.id]) : allSites), [allSites, mode]);
+  // 시나리오·실시간 모드 모두 같은 유산 목록(카탈로그)을 쓴다.
+  const sites = allSites;
 
   // 저장돼 있던 선택 유산이 지금 목록에 없으면(예: 예전 id 형식) 오류 없이 선택을 비운다. 목록을 받는 중에는 판단하지 않는다.
   // 화면 표시와 저장 모두 이 파생값을 쓰므로, 유효하지 않은 id 는 다음 저장 때 자연스럽게 null 로 바뀐다.
@@ -59,8 +58,8 @@ export default function App() {
   const scored: ScoredSite[] = useMemo(() => {
     if (mode === "live") {
       return sites.map((site) => {
-        const liveKey = LIVE_KEY_BY_SITE_ID[site.id];
-        const liveWeather = (liveKey ? live.data?.sites[liveKey] : null) ?? null;
+        // 실시간 값은 시군구별로 내려온다 — 유산의 시군구 코드로 찾는다. 코드가 없거나 그 시군구 조회가 실패했으면 "데이터 없음".
+        const liveWeather = (site.sigunguCode ? live.data?.regions[site.sigunguCode] : null) ?? null;
         return { site, score: liveWeather ? scoreSite(site, liveWeather, liveWeather.warnings ?? []) : null };
       });
     }

@@ -19,6 +19,9 @@ if (!process.env.VERCEL) {
 
 export const ENV = {
   kmaApiKey: process.env.KMA_API_KEY ?? "",
+  // 기상청 초단기실황(data.go.kr) 일일 호출 한도는 10,000건. 이 프로세스가 하루에 쓸 수 있는 호출 수의 상한(여유를 두고 9,000).
+  // 인스턴스가 여러 개면 인스턴스마다 따로 센다 — 어디까지나 폭주 방지용 안전장치다.
+  kmaDailyCallLimit: Number(process.env.KMA_DAILY_CALL_LIMIT ?? 9000),
   forestFireApiKey: process.env.FOREST_FIRE_API_KEY ?? "",
   // apihub.kma.go.kr 자체 인증키 (data.go.kr 공용키인 KMA_API_KEY와 다른 키 체계)
   kmaHubApiKey: process.env.KMA_HUB_API_KEY ?? "",

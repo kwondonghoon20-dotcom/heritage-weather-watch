@@ -12,6 +12,8 @@ export function LiveStatusBar({ updatedAt, loading, error, missingCount }: Props
       <p className="live-status">
         출처: 기상청 초단기실황 · 국립산림과학원 산불위험예보
         <br />
+        날씨는 시군구마다 대표 지점(5km 격자) 값을 조회해, 같은 시군구의 유산들이 함께 씁니다.
+        <br />
         마지막 갱신:{" "}
         {loading ? "갱신 중…" : updatedAt ? new Date(updatedAt).toLocaleTimeString("ko-KR") : "아직 없음"}
       </p>

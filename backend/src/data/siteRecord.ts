@@ -9,6 +9,7 @@ export interface SiteRecord {
   name: string;
   region: string;
   sigungu?: string;
+  sigunguCode?: string; // 5자리. 실시간 API 응답(시군구별)과 유산을 잇는 키
   material: SiteMaterial;
   heritageType: string;
   lat: number;

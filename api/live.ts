@@ -19,7 +19,8 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   try {
     const data = await getLiveData();
     res.setHeader("Content-Type", "application/json; charset=utf-8");
-    res.setHeader("Cache-Control", "no-store");
+    // CDN에서 10분간 공유 캐시해 함수 호출과 기상청 호출을 줄인다(기상청 일일 한도 10,000건 보호). 백그라운드 갱신은 30분까지 허용.
+    res.setHeader("Cache-Control", "public, s-maxage=600, stale-while-revalidate=1800");
     res.statusCode = 200;
     res.end(JSON.stringify(data));
   } catch (err) {

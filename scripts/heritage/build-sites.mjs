@@ -2,10 +2,12 @@
 // /api/sites 가 서빙할 "필요한 필드만 추린" 유산 목록을 만든다. 생성 결과는 커밋 대상이다
 // (원본 geojson 은 용량 때문에 커밋하지 않으므로, 배포되는 백엔드는 이 파일만 본다).
 //
-// 필드: id, name, region, sigungu, material, heritageType, lat, lng, regionTag, elevationProfile, (era, desc)
+// 필드: id, name, region, sigungu, sigunguCode, material, heritageType, lat, lng, regionTag, elevationProfile, (era, desc)
 //  - id            유산코드(17자리 문자열, 전국 유일)
 //  - region        시도명 축약형("경상북도"→"경북"). 기존 mock 16곳의 표기 관례와 맞춘다
 //  - sigungu       원본 시군구명 그대로 (수동 매핑 없음). 원본에 비어 있는 1건은 생략
+//  - sigunguCode   원본 시군구코드(ADD1xxxxx0)에서 뽑은 5자리 — 실시간 API(/api/live)가 시군구별로 응답하므로 유산과 맺어 주는 키.
+//                  산불위험예보 API 코드와 같은 체계다(기존 16곳에서 16/16 일치 확인, 예외 4곳은 백엔드 liveRegions.ts 에 별칭)
 //  - heritageType  원본 종목명 (국보·보물·사적·국가민속문화유산)
 //  - lat, lng      원본 대표점(polylabel) 소수 5자리(≈1m)
 //  - regionTag / elevationProfile
@@ -81,6 +83,10 @@ for (const f of features) {
 
   const rec = { id: p.유산코드, name: p.국가유산명, region };
   if (p.시군구명) rec.sigungu = p.시군구명;
+  if (p.시군구코드) {
+    if (!/^ADD1\d{5}0$/.test(p.시군구코드)) throw new Error(`시군구코드 형식이 예상과 다름: ${p.시군구코드} (${p.국가유산명})`);
+    rec.sigunguCode = p.시군구코드.slice(4, 9);
+  }
   Object.assign(rec, { material: p._material, heritageType: p.종목명, lat: round5(p._repLat), lng: round5(p._repLng), regionTag: m?.regionTag ?? "plain", elevationProfile: m?.elevationProfile ?? "plain" });
   if (m) { rec.era = m.era; rec.desc = m.desc; }
   records.push(rec);
