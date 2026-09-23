@@ -44,6 +44,11 @@ const stale = (s) => {
 const todo = catalog.filter(stale).sort((a, b) => rank(a) - rank(b) || (area.get(b.id) ?? 0) - (area.get(a.id) ?? 0));
 
 const today = new Date().toISOString().slice(0, 10); // 일 한도 기준일(UTC)
+const nextUtcMidnight = () => { const d = new Date(); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1, 0, 5); }; // 자정 + 5분
+if (cache.meta.blockedUntil && Date.now() < cache.meta.blockedUntil && !DRY) {
+  console.log(`한도 때문에 ${new Date(cache.meta.blockedUntil).toISOString()}(UTC)까지 쉬는 중 — ${cache.meta.blockedReason ?? ""}`);
+  process.exit(0);
+}
 const usedToday = cache.meta.usage[today] ?? 0;
 const HOUR = 3600 * 1000;
 cache.meta.recent = (cache.meta.recent ?? []).filter(([t]) => Date.now() - t < HOUR);
@@ -62,8 +67,10 @@ async function elevations(points) {
     try {
       const res = await fetch(url, { signal: AbortSignal.timeout(30000) });
       if (res.status === 429) {
-        if (attempt >= 2) throw Object.assign(new Error("429 한도 초과: " + (await res.text()).slice(0, 160)), { rateLimited: true });
-        console.log("  429 — 1분 기다렸다가 한 번 더 시도");
+        const body = (await res.text()).slice(0, 200);
+        // 분당 한도만 1분 뒤 다시 시도한다. 시간당·일일 한도는 기다려 봐야 그 창 안에서는 풀리지 않는다 — 멈추고 언제까지 쉴지 기록한다.
+        if (!/minute/i.test(body) || attempt >= 2) throw Object.assign(new Error("429 한도 초과: " + body), { rateLimited: true, body });
+        console.log("  429(분당) — 1분 기다렸다가 한 번 더 시도");
         await sleep(65000);
         continue;
       }
@@ -100,6 +107,8 @@ try {
     spent += points.length;
     done += group.length;
     cache.meta.recent.push([Date.now(), points.length]);
+    delete cache.meta.blockedUntil;
+    delete cache.meta.blockedReason;
     cache.meta.usage[today] = usedToday + spent;
     cache.meta.updatedAt = new Date().toISOString();
     writeJsonAtomic(ELEVATION_CACHE, cache);
@@ -108,6 +117,14 @@ try {
   }
 } catch (e) {
   console.error("중단:", e.message);
+  if (e.rateLimited) {
+    // Daily → 다음 UTC 자정 뒤, Hourly → 35분 뒤, 그 밖 → 10분 뒤
+    const until = /daily/i.test(e.body ?? "") ? nextUtcMidnight() : /hour/i.test(e.body ?? "") ? Date.now() + 35 * 60000 : Date.now() + 10 * 60000;
+    cache.meta.blockedUntil = until;
+    cache.meta.blockedReason = (e.body ?? "").slice(0, 120);
+    writeJsonAtomic(ELEVATION_CACHE, cache);
+    console.log(`→ ${new Date(until).toISOString()}(UTC) 이후에 다시 실행하세요.`);
+  }
 }
 const left = catalog.filter(stale).length;
 console.log(`\n이번 실행: ${done}곳 · ${spent}점 · ${((Date.now() - t0) / 1000).toFixed(0)}초. 남은 곳 ${left}곳(${left * POINTS_PER_SITE}점). 오늘 누계 ${cache.meta.usage[today] ?? 0}점.`);
